@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const pool = require("../db");
+const { logAction } = require("../utils/logger");
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -49,6 +50,12 @@ router.post("/login", async (req, res) => {
       },
       process.env.JWT_SECRET,
       { expiresIn: "8h" },
+    );
+
+    await logAction(
+      user.id,
+      "login",
+      `User logged in from email: ${user.email}`,
     );
 
     res.json({
