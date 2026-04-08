@@ -1,0 +1,386 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIN PAGE — Light theme (matches "style needed" reference)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Root ────────────────────────────────────────────────────────────────── */
+.lp-root {
+  position: relative;
+  min-height: 100vh;
+  background: #f7f9fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* ── Background blobs ────────────────────────────────────────────────────── */
+.lp-blob {
+  position: fixed;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Corner Logo ─────────────────────────────────────────────────────────── */
+.lp-corner-logo {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  height: 40px;
+  z-index: 10;
+}
+
+.lp-corner-logo img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.lp-blob--blue {
+  width: 450px;
+  height: 390px;
+  background: #cfe5ff;
+  top: -92px;
+  right: 0;
+  opacity: 0.2;
+  filter: blur(50px);
+}
+
+.lp-blob--red {
+  width: 394px;
+  height: 341px;
+  background: #ffdad5;
+  bottom: 0;
+  left: -72px;
+  opacity: 0.15;
+  filter: blur(40px);
+}
+
+.lp-blob--gold {
+  width: 320px;
+  height: 320px;
+  background: rgba(205, 167, 33, 0.15);
+  bottom: 0;
+  right: 15%;
+  filter: blur(50px);
+}
+
+/* ── Column container ────────────────────────────────────────────────────── */
+.lp-column {
+  position: relative;
+  z-index: 1;
+  width: 448px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* ── Brand ───────────────────────────────────────────────────────────────── */
+.lp-brand {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.lp-brand-icon {
+  margin-bottom: 12px;
+}
+
+.lp-brand-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #00629d;
+  letter-spacing: -0.75px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.lp-brand-sub {
+  font-size: 16px;
+  font-weight: 500;
+  color: #3f4852;
+  margin: 0;
+  margin-top: 4px;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.lp-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow:
+    0px 20px 25px -5px rgba(25, 28, 30, 0.05),
+    0px 8px 10px -6px rgba(25, 28, 30, 0.05);
+}
+
+/* ── Error ───────────────────────────────────────────────────────────────── */
+.lp-error {
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background: rgba(212, 24, 61, 0.08);
+  border: 1px solid rgba(212, 24, 61, 0.25);
+  color: #9b1239;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ── Form ────────────────────────────────────────────────────────────────── */
+.lp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Field ───────────────────────────────────────────────────────────────── */
+.lp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.lp-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3f4852;
+  line-height: 1.4;
+}
+
+.lp-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-forgot {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #00629d;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1.4;
+  transition: opacity 0.15s;
+}
+
+.lp-forgot:hover {
+  opacity: 0.75;
+}
+
+/* ── Input wrapper ───────────────────────────────────────────────────────── */
+.lp-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lp-input-icon {
+  position: absolute;
+  left: 16px;
+  pointer-events: none;
+  color: #6f7883;
+  flex-shrink: 0;
+}
+
+.lp-input {
+  width: 100%;
+  height: 49px;
+  padding: 0 44px;
+  background: #f2f4f6;
+  border: 2px solid transparent;
+  border-bottom-color: transparent;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 400;
+  color: #191c1e;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.lp-input::placeholder {
+  color: #bec7d4;
+  font-size: 16px;
+}
+
+.lp-input:focus {
+  background: #eef1f4;
+  border-bottom-color: #00629d;
+}
+
+.lp-eye {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #6f7883;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.lp-eye:hover {
+  color: #3f4852;
+}
+
+/* ── Remember me ─────────────────────────────────────────────────────────── */
+.lp-remember {
+  margin-bottom: 24px;
+}
+
+.lp-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.lp-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #bec7d4;
+  background: #f2f4f6;
+  cursor: pointer;
+  accent-color: #00629d;
+  flex-shrink: 0;
+}
+
+.lp-checkbox-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #191c1e;
+  line-height: 1.4;
+}
+
+/* ── Submit button ───────────────────────────────────────────────────────── */
+.lp-submit {
+  width: 100%;
+  height: 52px;
+  background: #00629d;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  box-shadow:
+    0px 10px 15px -3px rgba(0, 98, 157, 0.2),
+    0px 4px 6px -4px rgba(0, 98, 157, 0.2);
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-submit:hover:not(:disabled) {
+  background: #00527f;
+  box-shadow:
+    0px 12px 18px -3px rgba(0, 98, 157, 0.3),
+    0px 5px 8px -4px rgba(0, 98, 157, 0.25);
+}
+
+.lp-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.lp-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.lp-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lp-spin 0.6s linear infinite;
+}
+
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.lp-divider {
+  width: 100%;
+  padding: 8px 0;
+  margin-top: 8px;
+}
+
+.lp-divider-line {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    rgba(190, 199, 212, 0),
+    rgba(190, 199, 212, 0.3),
+    rgba(190, 199, 212, 0)
+  );
+  border-radius: 2px;
+}
+
+/* ── Feature badges ──────────────────────────────────────────────────────── */
+.lp-features {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 20px;
+  opacity: 0.8;
+}
+
+.lp-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-feature-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6f7883;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 500px) {
+  .lp-column {
+    width: 100%;
+    padding: 0 16px;
+  }
+  .lp-card {
+    padding: 24px 20px;
+  }
+}
