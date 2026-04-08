@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import Login from './pages/login/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import EmployeeApp from './pages/employee/EmployeeApp'
+import HrApp from './pages/hr/HrApp'
 
 import './index.css'
 import './App.css'
@@ -24,8 +25,11 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          {/* hr pages */}
+          <Route path="/hr/*" element={<HrApp />} />
+
           {/* Root redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/hr/dashboard" replace />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

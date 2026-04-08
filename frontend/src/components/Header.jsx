@@ -1,12 +1,18 @@
 import { Bell, Settings, User } from "lucide-react"
 
-export default function Header({ activePage = "dashboard", onNavigate }) {
-  const navItems = [
+export default function Header({ 
+  activePage = "dashboard", 
+  onNavigate,
+  navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "request", label: "Request" },
     { id: "history", label: "History" }
-  ]
-
+  ],
+  user = {
+    name: "Alex Chen",
+    role: "Software Developer"
+  }
+}) {
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -38,8 +44,8 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
           </button>
           <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
             <div className="text-right">
-              <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">Alex Chen</p>
-              <p className="text-[11px] text-[#64748b]">Software Developer</p>
+              <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">{user.name}</p>
+              <p className="text-[11px] text-[#64748b]">{user.role}</p>
             </div>
             <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
               <User size={20} className="text-sky-600" />
