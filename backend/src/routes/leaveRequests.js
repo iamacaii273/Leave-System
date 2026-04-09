@@ -3,6 +3,19 @@ const { v4: uuidv4 } = require("uuid");
 const pool = require("../db");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { logAction } = require("../utils/logger");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// ─── Multer setup ───────────────────────────────────────────────────────────
+const uploadDir = path.join(__dirname, "../../uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => cb(null, `${uuidv4()}${path.extname(file.originalname)}`),
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /me — Get the current user's own leave requests
@@ -45,7 +58,7 @@ router.get("/me", verifyToken, async (req, res) => {
 // POST / — Submit a new leave request
 // Protected: verifyToken
 // ─────────────────────────────────────────────────────────────────────────────
-router.post("/", verifyToken, async (req, res) => {
+router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
   const { leave_type_id, start_date, end_date, total_days, reason } = req.body;
 
   if (!leave_type_id || !start_date || !end_date || total_days == null) {
@@ -104,12 +117,30 @@ router.post("/", verifyToken, async (req, res) => {
       });
     }
 
+    // ── Overlap check: reject if any active request covers the same dates ──
+    const [overlaps] = await pool.query(
+      `SELECT id FROM leave_requests
+       WHERE user_id = ?
+         AND status NOT IN ('rejected', 'cancelled')
+         AND start_date <= ? AND end_date >= ?`,
+      [req.user.id, end_date, start_date]
+    );
+    if (overlaps.length > 0) {
+      return res.status(400).json({
+        message: "You already have a leave request that overlaps with the selected dates."
+      });
+    }
+
     const id = uuidv4();
+    let computedStatus = 'pending';
+    if (leave_type_id === 'lt000001-0000-0000-0000-000000000001') {
+      computedStatus = 'acknowledged';
+    }
 
     await pool.query(
       `INSERT INTO leave_requests
          (id, user_id, leave_type_id, start_date, end_date, total_days, reason, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         req.user.id,
@@ -118,8 +149,34 @@ router.post("/", verifyToken, async (req, res) => {
         end_date,
         parsedDays,
         reason ?? null,
+        computedStatus
       ],
     );
+
+    await pool.query(
+      `UPDATE leave_balances
+       SET used_days = used_days + ?, remaining_days = remaining_days - ?
+       WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+      [parsedDays, parsedDays, req.user.id, leave_type_id, currentYear]
+    );
+
+    // ── Save uploaded files ──────────────────────────────────────────────────
+    if (req.files && req.files.length > 0) {
+      const fileInserts = req.files.map(f => [
+        uuidv4(),
+        id,
+        f.originalname,
+        f.filename,
+        f.mimetype,
+        f.size,
+      ]);
+      await pool.query(
+        `INSERT INTO leave_request_files
+           (id, leave_request_id, original_name, stored_name, mime_type, size_bytes)
+         VALUES ?`,
+        [fileInserts]
+      );
+    }
 
     const [created] = await pool.query(
       `SELECT lr.*, lt.name AS leave_type_name
@@ -154,7 +211,7 @@ router.put("/:id/cancel", verifyToken, async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      "SELECT id, user_id, status FROM leave_requests WHERE id = ?",
+      "SELECT id, user_id, status, total_days, leave_type_id, start_date FROM leave_requests WHERE id = ?",
       [id],
     );
 
@@ -176,9 +233,18 @@ router.put("/:id/cancel", verifyToken, async (req, res) => {
       });
     }
 
+    const requestYear = new Date(request.start_date).getFullYear();
+
     await pool.query(
       "UPDATE leave_requests SET status = 'cancelled' WHERE id = ?",
       [id],
+    );
+
+    await pool.query(
+      `UPDATE leave_balances
+       SET used_days = used_days - ?, remaining_days = remaining_days + ?
+       WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+      [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
     );
 
     await logAction(
@@ -202,7 +268,7 @@ router.put("/:id/cancel", verifyToken, async (req, res) => {
 router.get(
   "/team",
   verifyToken,
-  requireRole("Manager", "HR", "Super Admin"),
+  requireRole("Manager", "HR", "Super Admin", "Employee"),
   async (req, res) => {
     try {
       const { status, leave_type_id } = req.query;
@@ -268,6 +334,97 @@ router.get(
       res.status(500).json({ message: "Internal server error." });
     }
   },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /:id — Get a single leave request with full detail (for manager view)
+// Protected: Manager, HR, Super Admin
+// ─────────────────────────────────────────────────────────────────────────────
+router.get(
+  "/:id",
+  verifyToken,
+  requireRole("HR", "Manager", "Super Admin"),
+  async (req, res) => {
+    const { id } = req.params;
+    try {
+      // 1. Main request + employee profile
+      const [rows] = await pool.query(
+        `SELECT
+           lr.id,
+           lr.user_id,
+           u.full_name,
+           u.email,
+           u.hire_date,
+           u.position_id,
+           p.name        AS position,
+           lr.leave_type_id,
+           lt.name       AS leave_type_name,
+           lr.start_date,
+           lr.end_date,
+           lr.total_days,
+           lr.reason,
+           lr.status,
+           lr.approved_by,
+           approver.full_name AS approved_by_name,
+           lr.reject_reason,
+           lr.submitted_at,
+           lr.updated_at
+         FROM leave_requests lr
+         JOIN      users       u        ON lr.user_id       = u.id
+         LEFT JOIN positions   p        ON u.position_id    = p.id
+         JOIN      leave_types lt       ON lr.leave_type_id = lt.id
+         LEFT JOIN users       approver ON lr.approved_by   = approver.id
+         WHERE lr.id = ?`,
+        [id]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: "Leave request not found." });
+      const request = rows[0];
+
+      // 2. Attached files
+      const [files] = await pool.query(
+        `SELECT id, original_name, stored_name, mime_type, size_bytes
+         FROM leave_request_files WHERE leave_request_id = ?`,
+        [id]
+      );
+
+      // 3. Previous requests by the same employee (last 5, excluding this one)
+      const [history] = await pool.query(
+        `SELECT
+           lr.id,
+           lt.name   AS leave_type_name,
+           lr.start_date,
+           lr.end_date,
+           lr.total_days,
+           lr.status,
+           lr.submitted_at
+         FROM leave_requests lr
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
+         WHERE lr.user_id = ? AND lr.id != ?
+         ORDER BY lr.submitted_at DESC
+         LIMIT 5`,
+        [request.user_id, id]
+      );
+
+      // 4. Leave balance for this leave type
+      const [balance] = await pool.query(
+        `SELECT lb.used_days, lb.total_days
+         FROM leave_balances lb
+         WHERE lb.user_id = ? AND lb.leave_type_id = ?
+           AND lb.year = YEAR(NOW())`,
+        [request.user_id, request.leave_type_id]
+      );
+
+      res.json({
+        request,
+        files,
+        history,
+        balance: balance[0] || null,
+      });
+    } catch (err) {
+      console.error("GET /:id error:", err);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  }
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -400,20 +557,6 @@ router.put(
         [req.user.id, id],
       );
 
-      await pool.query(
-        `UPDATE leave_balances
-         SET used_days      = used_days      + ?,
-             remaining_days = remaining_days - ?
-         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-        [
-          request.total_days,
-          request.total_days,
-          request.user_id,
-          request.leave_type_id,
-          requestYear,
-        ],
-      );
-
       await logAction(
         req.user.id,
         "request_approved",
@@ -453,9 +596,9 @@ router.put(
 
       const request = rows[0];
 
-      if (request.status !== "pending") {
+      if (request.status !== "pending" && request.status !== "acknowledged") {
         return res.status(400).json({
-          message: `Only pending requests can be approved. Current status: '${request.status}'.`,
+          message: `Only pending or acknowledged requests can be approved. Current status: '${request.status}'.`,
         });
       }
 
@@ -466,20 +609,6 @@ router.put(
          SET status = 'approved', approved_by = ?
          WHERE id = ?`,
         [req.user.id, id],
-      );
-
-      await pool.query(
-        `UPDATE leave_balances
-         SET used_days      = used_days      + ?,
-             remaining_days = remaining_days - ?
-         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-        [
-          request.total_days,
-          request.total_days,
-          request.user_id,
-          request.leave_type_id,
-          requestYear,
-        ],
       );
 
       await logAction(
@@ -510,7 +639,7 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        "SELECT id, user_id, status FROM leave_requests WHERE id = ?",
+        "SELECT id, user_id, status, total_days, leave_type_id, start_date FROM leave_requests WHERE id = ?",
         [id],
       );
 
@@ -526,11 +655,20 @@ router.put(
         });
       }
 
+      const requestYear = new Date(request.start_date).getFullYear();
+
       await pool.query(
         `UPDATE leave_requests
          SET status = 'rejected', approved_by = ?, reject_reason = ?
          WHERE id = ?`,
         [req.user.id, reject_reason ?? null, id],
+      );
+
+      await pool.query(
+        `UPDATE leave_balances
+         SET used_days = used_days - ?, remaining_days = remaining_days + ?
+         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
       );
 
       await logAction(

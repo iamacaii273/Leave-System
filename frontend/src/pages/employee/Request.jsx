@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import Header from "../../components/Header"
 import { Umbrella, Thermometer, Users, ChevronLeft, ChevronRight, Upload, X, Send, CalendarDays, FileText } from "lucide-react"
+import api from "../../services/api"
 
 /* ──────────────────────── helpers ──────────────────────── */
 
@@ -35,65 +36,69 @@ function isBetween(d, s, e) {
  * - Returns { days, hours, totalHours, label }
  *   label: "X Days" if >= 1 day, or "X Hours" if < 1 day
  */
-function calcDuration(start, end, sH, sM, sAP, eH, eM, eAP) {
-  if (!start || !end) return { days: 0, hours: 0, totalHours: 0, label: "" }
+function calcDuration(start, end, sH, sM, sAP, eH, eM, eAP, isAllDay) {
+  if (!start || !end) return { days: 0, hours: 0, minutes: 0, totalHours: 0, label: "" }
 
-  // count working days (Mon-Fri, inclusive)
   let workDays = 0
   const cur = new Date(start)
-  while (cur <= end) {
+  cur.setHours(0, 0, 0, 0)
+  const last = new Date(end)
+  last.setHours(0, 0, 0, 0)
+
+  const sameDay = cur.getTime() === last.getTime()
+
+  while (cur <= last) {
     const dow = cur.getDay()
     if (dow !== 0 && dow !== 6) workDays++
     cur.setDate(cur.getDate() + 1)
   }
 
-  // convert 12h -> 24h
-  const to24 = (h, ap) => {
-    let hr = parseInt(h, 10) || 0
-    if (ap === "PM" && hr < 12) hr += 12
-    if (ap === "AM" && hr === 12) hr = 0
-    return hr
-  }
-  const startH24 = to24(sH, sAP)
-  const endH24 = to24(eH, eAP)
-  const startM = parseInt(sM, 10) || 0
-  const endM = parseInt(eM, 10) || 0
+  let totalHours = 0
 
-  const sameDay = start.getTime() === end.getTime()
-
-  let totalHours
-  if (sameDay) {
-    // same day: diff between end time and start time
-    totalHours = (endH24 + endM / 60) - (startH24 + startM / 60)
-    if (totalHours < 0) totalHours = 0
+  if (isAllDay) {
+    totalHours = workDays * 8;
   } else {
-    // multiple days: full working days × 8h
-    totalHours = workDays * 8
+    const to24 = (h, ap) => {
+      let hr = parseInt(h, 10) || 0
+      if (ap === "PM" && hr < 12) hr += 12
+      if (ap === "AM" && hr === 12) hr = 0
+      return hr
+    }
+    const sTime = to24(sH, sAP) + (parseInt(sM, 10) || 0) / 60
+    const eTime = to24(eH, eAP) + (parseInt(eM, 10) || 0) / 60
+
+    if (workDays === 0) {
+      totalHours = 0
+    } else if (sameDay) {
+      totalHours = Math.max(0, eTime - sTime)
+    } else {
+      totalHours = (workDays - 1) * 8 + (eTime - sTime)
+      if (totalHours < 0) totalHours = 0
+    }
   }
 
-  const fullDays = Math.floor(totalHours / 8)
-  const remainHours = Math.round(totalHours % 8)
+  const fullDays = Math.floor(totalHours / 8);
+  const remainder = totalHours - (fullDays * 8);
+  const fullHours = Math.floor(remainder);
+  const remainMins = Math.round((remainder - fullHours) * 60);
 
-  // build label
-  let label
-  if (totalHours < 8) {
-    // less than 1 working day → show hours
-    const h = Math.round(totalHours)
-    label = `${h} Hour${h !== 1 ? "s" : ""}`
-  } else if (remainHours > 0) {
-    label = `${fullDays} Day${fullDays !== 1 ? "s" : ""}, ${remainHours} Hour${remainHours !== 1 ? "s" : ""}`
-  } else {
-    label = `${fullDays} Day${fullDays !== 1 ? "s" : ""}`
-  }
+  let labelParts = [];
+  if (fullDays > 0) labelParts.push(`${fullDays} Day${fullDays !== 1 ? 's' : ''}`);
+  if (fullHours > 0 || (fullDays === 0 && remainMins === 0)) labelParts.push(`${fullHours} Hour${fullHours !== 1 ? 's' : ''}`);
+  if (remainMins > 0) labelParts.push(`${remainMins} Min${remainMins !== 1 ? 's' : ''}`);
 
-  return { days: fullDays, hours: remainHours, totalHours, label }
+  const label = labelParts.length > 0 ? labelParts.join(', ') : '0 Hours';
+
+  return { days: fullDays, hours: fullHours, minutes: remainMins, totalHours, label }
 }
 
 /* ──────────────────────── main component ──────────────────────── */
 
 export default function Request({ onNavigate }) {
+  const [leaveBalances, setLeaveBalances] = useState([])
+
   /* leave type */
-  const [leaveType, setLeaveType] = useState("annual")
+  const [leaveType, setLeaveType] = useState("")
 
   /* calendar nav */
   const now = new Date()
@@ -105,6 +110,7 @@ export default function Request({ onNavigate }) {
   const [endDate, setEndDate] = useState(null)
 
   /* time */
+  const [isAllDay, setIsAllDay] = useState(true)
   const [startHour, setStartHour] = useState("09")
   const [startMin, setStartMin] = useState("00")
   const [startAmPm, setStartAmPm] = useState("AM")
@@ -114,6 +120,9 @@ export default function Request({ onNavigate }) {
 
   /* reason */
   const [reason, setReason] = useState("")
+
+  /* submit error */
+  const [submitError, setSubmitError] = useState("")
 
   /* files */
   const [files, setFiles] = useState([])
@@ -127,19 +136,58 @@ export default function Request({ onNavigate }) {
   }
 
   /* computed step (auto from selections) */
-  const currentStep = leaveType ? (startDate && endDate ? 3 : startDate ? 2 : 1) : 1
+  const currentStep = leaveType ? (startDate && endDate ? 3 : 2) : 1
 
   /* duration — recalculates when dates or times change */
-  const duration = useMemo(
-    () => calcDuration(startDate, endDate, startHour, startMin, startAmPm, endHour, endMin, endAmPm),
-    [startDate, endDate, startHour, startMin, startAmPm, endHour, endMin, endAmPm]
-  )
+  const duration = useMemo(() => {
+    return calcDuration(startDate, endDate, startHour, startMin, startAmPm, endHour, endMin, endAmPm, isAllDay)
+  }, [startDate, endDate, startHour, startMin, startAmPm, endHour, endMin, endAmPm, isAllDay])
+
+  const handleSubmit = async () => {
+    setSubmitError("");
+    if (!startDate || !endDate) return setSubmitError("Please select dates");
+    if (duration.totalHours <= 0) return setSubmitError("Duration must be greater than 0");
+
+    const sDateBase = `${startDate.getFullYear()}-${pad2(startDate.getMonth() + 1)}-${pad2(startDate.getDate())}`;
+    const eDateBase = `${endDate.getFullYear()}-${pad2(endDate.getMonth() + 1)}-${pad2(endDate.getDate())}`;
+
+    let finalStart = `${sDateBase}T09:00:00`;
+    let finalEnd = `${eDateBase}T17:00:00`;
+
+    if (!isAllDay) {
+      const to24 = (h, ap) => pad2((parseInt(h, 10) % 12) + (ap === "PM" ? 12 : 0));
+      finalStart = `${sDateBase}T${to24(startHour, startAmPm)}:${startMin}:00`;
+      finalEnd = `${eDateBase}T${to24(endHour, endAmPm)}:${endMin}:00`;
+    }
+
+    let leaveTypeId = "lt000001-0000-0000-0000-000000000003"; // annual
+    if (leaveType === "sick") leaveTypeId = "lt000001-0000-0000-0000-000000000001";
+    if (leaveType === "personal") leaveTypeId = "lt000001-0000-0000-0000-000000000002";
+
+    const formData = new FormData();
+    formData.append('leave_type_id', leaveTypeId);
+    formData.append('start_date', finalStart);
+    formData.append('end_date', finalEnd);
+    formData.append('total_days', String(duration.totalHours / 8));
+    formData.append('reason', reason || '');
+    files.forEach(f => formData.append('files', f));
+
+    try {
+      await api.post('/leave-requests', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      onNavigate && onNavigate('dashboard');
+    } catch (e) {
+      console.error(e);
+      setSubmitError(e.response?.data?.message || "Failed to submit request.");
+    }
+  }
 
   /* ─── leave types ─── */
   const leaveTypes = [
-    { id: "annual", label: "Annual Leave", desc: "Personal recharge", Icon: Umbrella, color: "#1982c4", bg: "#e6f2fb" },
-    { id: "sick", label: "Sick Leave", desc: "Rest & recovery", Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" },
-    { id: "personal", label: "Personal", desc: "Family & errands", Icon: Users, color: "#d06ab0", bg: "#f8e0f0" },
+    { id: "annual", label: "Annual Leave", desc: "Personal recharge", Icon: Umbrella, color: "#0172b1", bg: "#ffffff" },
+    { id: "sick", label: "Sick Leave", desc: "Rest & recovery", Icon: Thermometer, color: "#ea6518", bg: "#fff0dc" },
+    { id: "personal", label: "Personal", desc: "Family & errands", Icon: Users, color: "#da1c73", bg: "#fdeaf3" },
   ]
 
   /* ─── calendar grid ─── */
@@ -153,15 +201,12 @@ export default function Request({ onNavigate }) {
 
   const calCells = useMemo(() => {
     const cells = []
-    // trailing days of previous month
     for (let i = firstDay - 1; i >= 0; i--) {
       cells.push({ day: prevMonthDays - i, current: false })
     }
-    // current month
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push({ day: d, current: true })
     }
-    // fill remaining to complete 6 rows
     const remain = 42 - cells.length
     for (let d = 1; d <= remain; d++) {
       cells.push({ day: d, current: false })
@@ -230,19 +275,19 @@ export default function Request({ onNavigate }) {
                 >
                   {s.num}
                 </div>
-                <span className={`text-[12px] mt-2 font-bold ${currentStep >= s.num ? "text-[#1c355e]" : "text-[#94a3b8]"}`}>
+                <span className={`text-[13px] mt-2 font-bold ${currentStep >= s.num ? "text-[#1c355e]" : "text-[#94a3b8]"}`}>
                   {s.label}
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div className={`w-28 h-[3px] rounded-full -mt-5 ${currentStep > s.num ? "bg-[#1c355e]" : "bg-[#dde3ec]"}`} />
+                <div className={`w-36 h-[3px] rounded-full -mt-5 ${currentStep > s.num ? "bg-[#1c355e]" : "bg-[#dde3ec]"}`} />
               )}
             </div>
           ))}
         </div>
 
         {/* ── Main Content: 3 columns ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_210px] gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 mb-6">
 
           {/* ← Leave Types */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm self-start">
@@ -254,18 +299,23 @@ export default function Request({ onNavigate }) {
                 <button
                   key={id}
                   onClick={() => setLeaveType(id)}
-                  className={`w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3 ${leaveType === id
-                    ? "bg-[#c6ddf0] ring-2 ring-[#1c355e]"
-                    : "bg-[#f4f7fb] hover:bg-[#eaf0f7]"
-                    }`}
+                  className="w-full py-4 px-5 rounded-[40px] text-left transition-all flex items-center gap-4 border-2 outline-none cursor-pointer hover:opacity-90"
+                  style={{
+                    backgroundColor: leaveType === id ? "#9ab8cf" : "#f2f4f6",
+                    borderColor: leaveType === id ? "#0f3557" : "transparent"
+                  }}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center shrink-0"
                     style={{ backgroundColor: bg }}>
-                    <Icon size={18} color={color} strokeWidth={2.5} />
+                    <Icon size={22} color={color} strokeWidth={2.2} />
                   </div>
                   <div>
-                    <p className="font-bold text-[13px] text-[#2d3e50]">{label}</p>
-                    <p className={`text-[11px] font-semibold ${leaveType === id ? "text-[#4a6070]" : "text-[#94a3b8]"}`}>
+                    <p className="font-[800] text-[15px] mb-0.5"
+                      style={{ color: leaveType === id ? "#2c3b4a" : "#2b3c4f" }}>
+                      {label}
+                    </p>
+                    <p className="text-[12px] font-medium"
+                      style={{ color: leaveType === id ? "#5f7587" : "#6f7a83" }}>
                       {desc}
                     </p>
                   </div>
@@ -275,7 +325,7 @@ export default function Request({ onNavigate }) {
           </div>
 
           {/* ─ Calendar ─ */}
-          <div className="bg-white rounded-[32px] p-6 shadow-sm self-start">
+          <div className={`bg-white rounded-[32px] p-6 shadow-sm self-start transition-opacity ${currentStep < 2 ? "opacity-50 pointer-events-none" : ""}`}>
             {/* month nav */}
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-[17px] text-[#2d3e50]">
@@ -339,69 +389,119 @@ export default function Request({ onNavigate }) {
 
           {/* → Time & Duration */}
           <div className="flex flex-col gap-5 self-start">
-            {/* Start time */}
-            <div>
-              <p className="text-[10px] font-bold text-[#94a3b8] tracking-widest uppercase mb-2">
-                START TIME {startDate ? `(${MONTH_NAMES[startDate.getMonth()].slice(0, 3)} ${startDate.getDate()})` : ""}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text" value={startHour}
-                  onChange={e => setStartHour(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  className="w-11 h-10 rounded-lg bg-white border border-[#dde3ec] text-center text-[14px] font-bold text-[#2d3e50] focus:outline-none focus:ring-2 focus:ring-[#1c355e]"
-                />
-                <input
-                  type="text" value={startMin}
-                  onChange={e => setStartMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  className="w-11 h-10 rounded-lg bg-white border border-[#dde3ec] text-center text-[14px] font-bold text-[#2d3e50] focus:outline-none focus:ring-2 focus:ring-[#1c355e]"
-                />
-                <div className="flex rounded-xl overflow-hidden border-2 border-[#1c355e]/30">
-                  <button
-                    onClick={() => setStartAmPm("AM")}
-                    className={`px-5 py-3 text-[14px] font-bold transition-colors ${startAmPm === "AM" ? "bg-[#1c355e] text-white" : "bg-white text-[#3f4a51] hover:bg-[#f0f3f8]"}`}
-                  >AM</button>
-                  <button
-                    onClick={() => setStartAmPm("PM")}
-                    className={`px-5 py-3 text-[14px] font-bold transition-colors ${startAmPm === "PM" ? "bg-[#1c355e] text-white" : "bg-white text-[#3f4a51] hover:bg-[#f0f3f8]"}`}
-                  >PM</button>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${isAllDay ? "bg-[#1c355e] border-[#1c355e]" : "border-[#ccd5df] bg-transparent"}`}>
+                  {isAllDay && <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.4L0 5.4L1.4 4L4 6.6L10.6 0L12 1.4L4 9.4Z" fill="white" /></svg>}
                 </div>
-              </div>
+                <span className="text-[13px] font-[800] text-[#6a7c92] tracking-wider uppercase select-none">
+                  ALL DAY LEAVE
+                </span>
+                <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="hidden" />
+              </label>
             </div>
 
-            {/* End time */}
-            <div>
-              <p className="text-[10px] font-bold text-[#94a3b8] tracking-widest uppercase mb-2">
-                END TIME {endDate ? `(${MONTH_NAMES[endDate.getMonth()].slice(0, 3)} ${endDate.getDate()})` : ""}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text" value={endHour}
-                  onChange={e => setEndHour(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  className="w-11 h-10 rounded-lg bg-white border border-[#dde3ec] text-center text-[14px] font-bold text-[#2d3e50] focus:outline-none focus:ring-2 focus:ring-[#1c355e]"
-                />
-                <input
-                  type="text" value={endMin}
-                  onChange={e => setEndMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  className="w-11 h-10 rounded-lg bg-white border border-[#dde3ec] text-center text-[14px] font-bold text-[#2d3e50] focus:outline-none focus:ring-2 focus:ring-[#1c355e]"
-                />
-                <div className="flex rounded-xl overflow-hidden border-2 border-[#1c355e]/30">
-                  <button
-                    onClick={() => setEndAmPm("AM")}
-                    className={`px-5 py-3 text-[14px] font-bold transition-colors ${endAmPm === "AM" ? "bg-[#1c355e] text-white" : "bg-white text-[#3f4a51] hover:bg-[#f0f3f8]"}`}
-                  >AM</button>
-                  <button
-                    onClick={() => setEndAmPm("PM")}
-                    className={`px-5 py-3 text-[14px] font-bold transition-colors ${endAmPm === "PM" ? "bg-[#1c355e] text-white" : "bg-white text-[#3f4a51] hover:bg-[#f0f3f8]"}`}
-                  >PM</button>
+            {!isAllDay && (
+              <>
+                {/* Start time */}
+                <div className="mt-2">
+                  <p className="text-[12px] font-[800] tracking-widest uppercase mb-3" style={{ color: "#6a7c92" }}>
+                    START TIME {startDate ? `(${MONTH_NAMES[startDate.getMonth()].slice(0, 3).toUpperCase()} ${startDate.getDate()})` : ""}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center rounded-[10px] px-2 h-[42px] flex-1 border" style={{ backgroundColor: "#f3f4f6", borderColor: "#ccd5df" }}>
+                      <select
+                        value={startHour}
+                        onChange={e => setStartHour(e.target.value)}
+                        className="w-1/2 h-full bg-transparent text-center text-[16px] font-bold focus:outline-none appearance-none cursor-pointer"
+                        style={{ color: "#1d2f3e" }}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => pad2(i + 1)).map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <span className="font-bold mx-0.5 pb-0.5" style={{ color: "#c9d1db" }}>:</span>
+                      <select
+                        value={startMin}
+                        onChange={e => setStartMin(e.target.value)}
+                        className="w-1/2 h-full bg-transparent text-center text-[16px] font-bold focus:outline-none appearance-none cursor-pointer pl-1"
+                        style={{ color: "#1d2f3e" }}
+                      >
+                        {Array.from({ length: 60 }, (_, i) => pad2(i)).map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center rounded-[10px] p-[3.5px] h-[42px] border" style={{ backgroundColor: "#f3f4f6", borderColor: "#cdd5df" }}>
+                      <button
+                        onClick={() => setStartAmPm("AM")}
+                        className="w-11 h-full text-[13px] font-bold rounded-[7px] transition-colors flex items-center justify-center cursor-pointer"
+                        style={{
+                          backgroundColor: startAmPm === "AM" ? "#00a2fa" : "transparent",
+                          color: startAmPm === "AM" ? "#ffffff" : "#7e8c9b"
+                        }}
+                      >AM</button>
+                      <button
+                        onClick={() => setStartAmPm("PM")}
+                        className="w-11 h-full text-[13px] font-bold rounded-[7px] transition-colors flex items-center justify-center cursor-pointer"
+                        style={{
+                          backgroundColor: startAmPm === "PM" ? "#00a2fa" : "transparent",
+                          color: startAmPm === "PM" ? "#ffffff" : "#7e8c9b"
+                        }}
+                      >PM</button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                {/* End time */}
+                <div>
+                  <p className="text-[12px] font-[800] tracking-widest uppercase mb-3 mt-1" style={{ color: "#6a7c92" }}>
+                    END TIME {endDate ? `(${MONTH_NAMES[endDate.getMonth()].slice(0, 3).toUpperCase()} ${endDate.getDate()})` : ""}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center rounded-[10px] px-2 h-[42px] flex-1 border" style={{ backgroundColor: "#f3f4f6", borderColor: "#ccd5df" }}>
+                      <select
+                        value={endHour}
+                        onChange={e => setEndHour(e.target.value)}
+                        className="w-1/2 h-full bg-transparent text-center text-[16px] font-bold focus:outline-none appearance-none cursor-pointer"
+                        style={{ color: "#1d2f3e" }}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => pad2(i + 1)).map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <span className="font-bold mx-0.5 pb-0.5" style={{ color: "#c9d1db" }}>:</span>
+                      <select
+                        value={endMin}
+                        onChange={e => setEndMin(e.target.value)}
+                        className="w-1/2 h-full bg-transparent text-center text-[16px] font-bold focus:outline-none appearance-none cursor-pointer pl-1"
+                        style={{ color: "#1d2f3e" }}
+                      >
+                        {Array.from({ length: 60 }, (_, i) => pad2(i)).map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center rounded-[10px] p-[3.5px] h-[42px] border" style={{ backgroundColor: "#f3f4f6", borderColor: "#cdd5df" }}>
+                      <button
+                        onClick={() => setEndAmPm("AM")}
+                        className="w-11 h-full text-[13px] font-bold rounded-[7px] transition-colors flex items-center justify-center cursor-pointer"
+                        style={{
+                          backgroundColor: endAmPm === "AM" ? "#00a2fa" : "transparent",
+                          color: endAmPm === "AM" ? "#ffffff" : "#7e8c9b"
+                        }}
+                      >AM</button>
+                      <button
+                        onClick={() => setEndAmPm("PM")}
+                        className="w-11 h-full text-[13px] font-bold rounded-[7px] transition-colors flex items-center justify-center cursor-pointer"
+                        style={{
+                          backgroundColor: endAmPm === "PM" ? "#00a2fa" : "transparent",
+                          color: endAmPm === "PM" ? "#ffffff" : "#7e8c9b"
+                        }}
+                      >PM</button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Duration */}
             {startDate && endDate && (
-              <div className="mt-1">
-                <p className="text-[10px] font-bold text-[#1c355e] tracking-widest uppercase mb-1">DURATION</p>
-                <p className="text-[16px] font-bold text-[#2d3e50]">
+              <div className="mt-8 pt-5 border-t border-[#ccd6df]">
+                <p className="text-[12px] font-[800] text-[#006fab] tracking-widest uppercase mb-1">DURATION</p>
+                <p className="text-[20px] font-bold text-[#1b2e3e]">
                   {duration.label}
                 </p>
               </div>
@@ -410,11 +510,11 @@ export default function Request({ onNavigate }) {
         </div>
 
         {/* ── Bottom row: Attachments + Reason ── */}
-        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 mb-6">
+        <div className={`grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 mb-6 transition-opacity ${currentStep < 3 ? "opacity-50 pointer-events-none" : ""}`}>
           {/* Attachments */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm">
             <h3 className="font-bold text-[15px] text-[#3f4a51] mb-5 flex items-center gap-2">
-              <CalendarDays size={16} /> Attachments
+              <Upload size={16} /> Attachments
             </h3>
             <input
               type="file"
@@ -467,14 +567,26 @@ export default function Request({ onNavigate }) {
 
         {/* ── Action Buttons ── */}
         <div className="flex justify-between items-center mt-4 mb-8 px-2">
-          <button className="text-[#f56464] font-bold text-[14px] hover:text-red-600 flex items-center gap-2 transition-colors">
+          <button onClick={() => onNavigate && onNavigate('dashboard')} className="text-[#f56464] font-bold text-[14px] hover:text-red-600 flex items-center gap-2 transition-colors cursor-pointer">
             <X size={18} strokeWidth={2.5} />
             Discard Request
           </button>
-          <button className="!bg-[#133251] text-white !px-8 !py-4 rounded-full text-[14px] font-bold hover:bg-[#081830] transition-colors flex items-center gap-2.5 shadow-lg shadow-[#0a1e3d]/30">
-            Submit Request
-            <Send size={16} strokeWidth={2.5} />
-          </button>
+          
+          <div className="flex items-center gap-4">
+            {submitError && (
+              <span className="text-[#f56464] text-[13px] font-bold">
+                {submitError}
+              </span>
+            )}
+            <button 
+              onClick={handleSubmit} 
+              disabled={!leaveType || !startDate || !endDate || duration.totalHours <= 0}
+              className="!bg-[#133251] text-white !px-8 !py-4 rounded-full text-[14px] font-bold hover:bg-[#081830] transition-colors flex items-center gap-2.5 shadow-lg shadow-[#0a1e3d]/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Submit Request
+              <Send size={16} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
       </main>
     </div>

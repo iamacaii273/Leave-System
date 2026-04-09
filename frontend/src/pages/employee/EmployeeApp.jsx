@@ -1,20 +1,21 @@
-import { useState } from "react"
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import Dashboard from "./Dashboard"
 import Request from "./Request"
 import History from "./History"
 
 export default function EmployeeApp() {
-  const [currentPage, setCurrentPage] = useState("dashboard")
+  const navigate = useNavigate()
 
   const handleNavigate = (page) => {
-    setCurrentPage(page)
+    navigate(`/employee/${page}`)
   }
 
   return (
-    <>
-      {currentPage === "dashboard" && <Dashboard onNavigate={handleNavigate} />}
-      {currentPage === "request" && <Request onNavigate={handleNavigate} />}
-      {currentPage === "history" && <History onNavigate={handleNavigate} />}
-    </>
+    <Routes>
+      <Route path="dashboard" element={<Dashboard onNavigate={handleNavigate} />} />
+      <Route path="request" element={<Request onNavigate={handleNavigate} />} />
+      <Route path="history" element={<History onNavigate={handleNavigate} />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
   )
 }

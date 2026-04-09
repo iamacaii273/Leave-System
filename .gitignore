@@ -63,3 +63,8 @@ coverage/
 # ========================
 *.local
 *.pem
+
+# ========================
+# Uploads (user files — use cloud storage in production)
+# ========================
+backend/uploads/

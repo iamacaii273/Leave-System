@@ -22,9 +22,25 @@ export default function LeaveBalanceCard({ title, used, total, variant }) {
     }
   }
 
+  const safeUsed = Number(used) || 0;
+  const safeTotal = Number(total) || 1; 
   const style = variants[variant]
-  const percentage = (used / total) * 100
+  const percentage = (safeUsed / safeTotal) * 100
   const Icon = style.icon
+
+  const formattedUsed = Number(safeUsed.toFixed(1));
+  const formattedTotal = Number(safeTotal.toFixed(1));
+
+  const totalHoursUsed = safeUsed * 8;
+  const daysUsed = Math.floor(totalHoursUsed / 8);
+  const hrsUsed = Math.floor(totalHoursUsed - (daysUsed * 8));
+  const minsUsed = Math.round((totalHoursUsed - (daysUsed * 8) - hrsUsed) * 60);
+
+  let parts = [];
+  if (daysUsed > 0) parts.push(`${daysUsed}d`);
+  if (hrsUsed > 0) parts.push(`${hrsUsed}h`);
+  if (minsUsed > 0) parts.push(`${minsUsed}m`);
+  const usedText = parts.length > 0 ? parts.join(" ") + " used" : "0d used";
 
   return (
     <div
@@ -33,12 +49,15 @@ export default function LeaveBalanceCard({ title, used, total, variant }) {
     >
       <div className="relative z-10" style={{ color: style.text }}>
         <p className="text-[15px] font-bold mb-2">{title}</p>
-        <div className="flex items-baseline gap-1 mb-8">
+        <div className="flex items-baseline gap-1 mb-1">
           <span className="text-5xl font-bold font-fredoka tracking-wide">
-            {String(used).padStart(2, "0")}
+            {formattedUsed}
           </span>
-          <span className="text-[15px] font-bold opacity-80">/ {total < 10 ? total : total} {total > 9 ? 'days' : 'days'}</span>
+          <span className="text-[15px] font-bold opacity-80">/ {formattedTotal} days</span>
         </div>
+        <p className="text-[13px] font-bold opacity-80 tracking-wide mb-4 mt-1">
+          {usedText}
+        </p>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: style.barBg }}>
           <div
             className="h-full rounded-full transition-all duration-500 ease-out"

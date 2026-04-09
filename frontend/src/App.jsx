@@ -5,6 +5,8 @@ import Login from './pages/login/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import EmployeeApp from './pages/employee/EmployeeApp'
 import HrApp from './pages/hr/HrApp'
+import ManagerApp from './pages/manager/ManagerApp'
+import Unauthorized from './pages/Unauthorized'
 
 import './index.css'
 import './App.css'
@@ -17,11 +19,19 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login" element={<Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Employee pages */}
+          {/* Employee pages — Employee role only */}
           <Route path="/employee/*" element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["Employee"]}>
               <EmployeeApp />
+            </ProtectedRoute>
+          } />
+
+          {/* Manager pages — Manager role only */}
+          <Route path="/manager/*" element={
+            <ProtectedRoute allowedRoles={["Manager"]}>
+              <ManagerApp />
             </ProtectedRoute>
           } />
 
