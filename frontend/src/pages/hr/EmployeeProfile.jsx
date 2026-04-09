@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { PenLine, Trash2, UserCog, Mail, Phone, MapPin, Briefcase, Calendar as CalendarIcon, Umbrella, Users, Thermometer, Folder } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
@@ -17,11 +18,18 @@ export default function EmployeeProfile({ onNavigate }) {
     role: "Global HR Manager"
   }
 
-  const activities = [
+  const [showAllActivities, setShowAllActivities] = useState(false)
+
+  const allActivities = [
     { id: 1, type: "Annual Leave", date: "Applied on Oct 12 • 5 Days", status: "Approved", icon: "annual" },
     { id: 2, type: "Personal Leave", date: "Applied on Sep 05 • 1 Day", status: "Approved", icon: "personal" },
-    { id: 3, type: "Sick Leave", date: "Applied on Aug 21 • 2 Days", status: "Rejected", icon: "sick" }
+    { id: 3, type: "Sick Leave", date: "Applied on Aug 21 • 2 Days", status: "Rejected", icon: "sick" },
+    { id: 4, type: "Annual Leave", date: "Applied on Jul 10 • 3 Days", status: "Approved", icon: "annual" },
+    { id: 5, type: "Sick Leave", date: "Applied on Jun 18 • 1 Day", status: "Approved", icon: "sick" },
+    { id: 6, type: "Personal Leave", date: "Applied on May 02 • 2 Days", status: "Rejected", icon: "personal" },
   ]
+
+  const displayedActivities = showAllActivities ? allActivities : allActivities.slice(0, 3)
 
   const statusStyles = {
     Approved: { bg: "#0cf1aa", text: "#185b48" },
@@ -154,10 +162,15 @@ export default function EmployeeProfile({ onNavigate }) {
                 <div className="flex items-center gap-3">
                   <h3 className="font-bold text-[22px] font-fredoka text-[#3f4a51] tracking-wide m-0">Recent Activity</h3>
                 </div>
-                <button className="text-[15px] font-bold text-[#5e6c7e] hover:text-[#3f4a51] transition-colors pt-1">View All</button>
+                <button 
+                  onClick={() => setShowAllActivities(!showAllActivities)}
+                  className="text-[15px] font-bold text-[#5e6c7e] hover:text-[#3f4a51] transition-colors pt-1"
+                >
+                  {showAllActivities ? 'Show Less' : 'View All'}
+                </button>
               </div>
-              <div className="space-y-4">
-                {activities.map((act) => {
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                {displayedActivities.map((act) => {
                   const { Icon, color, bg } = iconData[act.icon];
                   return (
                     <div key={act.id} className="flex items-center justify-between p-5 bg-[#f9fafb] rounded-[24px]">

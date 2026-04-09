@@ -12,7 +12,9 @@ export default function Reports({ onNavigate }) {
   const [endDate, setEndDate] = useState("")
   const [appliedRange, setAppliedRange] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [balancesPage, setBalancesPage] = useState(1)
   const itemsPerPage = 4
+  const balancesPerPage = 4
   const pickerRef = useRef(null)
 
   // Close picker when clicking outside
@@ -49,11 +51,25 @@ export default function Reports({ onNavigate }) {
 
   // Card 2: Balances Data
   const balances = [
-    { name: "Jane Doe", initial: "JD", bg: "#dbeafe", sick: "3 / 30", personal: "1 / 3", annual: "0 / 6", specialBadge: null, specialSick: false, specialPersonal: false, specialAnnual: false },
-    { name: "Somsak Meesuk", initial: "SM", bg: "#fef08a", sick: "5 / 30", personal: "3 / 3", annual: "2 / 6", specialBadge: null, specialSick: false, specialPersonal: true, specialAnnual: false },
-    { name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", sick: "1 / 30", personal: "0 / 3", annual: "0 / 0", specialBadge: "NEW HIRE (< 12MO)", specialSick: false, specialPersonal: false, specialAnnual: true },
-    { name: "Bob Peterson", initial: "BP", bg: "#e2e8f0", sick: "2 / 30", personal: "2 / 3", annual: "5 / 6", specialBadge: null, specialSick: false, specialPersonal: false, specialAnnual: false },
+    { name: "Jane Doe", initial: "JD", bg: "#dbeafe", sick: "3 / 30", personal: "1 / 3", annual: "0 / 6", specialBadge: null },
+    { name: "Somsak Meesuk", initial: "SM", bg: "#fef08a", sick: "5 / 30", personal: "3 / 3", annual: "2 / 6", specialBadge: null },
+    { name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", sick: "1 / 30", personal: "0 / 3", annual: "0 / 0", specialBadge: "NEW HIRE (< 12MO)" },
+    { name: "Bob Peterson", initial: "BP", bg: "#e2e8f0", sick: "2 / 30", personal: "2 / 3", annual: "5 / 6", specialBadge: null },
+    { name: "Marcus Chen", initial: "MC", bg: "#bfeadd", sick: "4 / 30", personal: "2 / 3", annual: "3 / 6", specialBadge: null },
+    { name: "Elena Rodriguez", initial: "ER", bg: "#c4b5fd", sick: "0 / 30", personal: "1 / 3", annual: "1 / 6", specialBadge: null },
+    { name: "James Wilson", initial: "JW", bg: "#e0f2fe", sick: "7 / 30", personal: "3 / 3", annual: "4 / 6", specialBadge: null },
+    { name: "Sarah Connor", initial: "SC", bg: "#fef08a", sick: "2 / 30", personal: "0 / 3", annual: "2 / 6", specialBadge: null },
+    { name: "Amanda Smith", initial: "AS", bg: "#fed7aa", sick: "6 / 30", personal: "1 / 3", annual: "5 / 6", specialBadge: null },
+    { name: "David Kim", initial: "DK", bg: "#bae6fd", sick: "1 / 30", personal: "0 / 3", annual: "0 / 6", specialBadge: "NEW HIRE (< 12MO)" },
+    { name: "Lisa Park", initial: "LP", bg: "#fbcfe8", sick: "3 / 30", personal: "2 / 3", annual: "1 / 6", specialBadge: null },
+    { name: "Tom Hardy", initial: "TH", bg: "#a7f3d0", sick: "8 / 30", personal: "1 / 3", annual: "6 / 6", specialBadge: null },
   ]
+
+  // Balances pagination
+  const balTotalPages = Math.ceil(balances.length / balancesPerPage) || 1
+  const paginatedBalances = balances.slice((balancesPage - 1) * balancesPerPage, balancesPage * balancesPerPage)
+  const balStartItem = balances.length === 0 ? 0 : (balancesPage - 1) * balancesPerPage + 1
+  const balEndItem = Math.min(balancesPage * balancesPerPage, balances.length)
 
   // Card 3: History Data
   const iconData = {
@@ -73,7 +89,15 @@ export default function Reports({ onNavigate }) {
     { id: 1, name: "Jane Doe", initial: "JD", bg: "#dbeafe", type: "Annual Leave", icon: "annual", dates: "Aug 14 - Aug 21, 2024", start: new Date(2024, 7, 14), end: new Date(2024, 7, 21), submitted: "Jul 02", duration: "5 Days", status: "Approved", approver: "Boss", dot: true },
     { id: 2, name: "Somsak Meesuk", initial: "SM", bg: "#fef08a", type: "Personal Leave", icon: "personal", dates: "Oct 05 - Oct 06, 2024", start: new Date(2024, 9, 5), end: new Date(2024, 9, 6), submitted: "2h ago", duration: "2 Days", status: "Pending", approver: "-", dot: true },
     { id: 3, name: "Bob Peterson", initial: "BP", bg: "#e2e8f0", type: "Sick Leave", icon: "sick", dates: "May 12, 2024", start: new Date(2024, 4, 12), end: new Date(2024, 4, 12), submitted: "May 10", duration: "4 Hr", status: "Rejected", approver: "Boss", dot: true },
-    { id: 4, name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", type: "Annual Leave", icon: "annual", dates: "Mar 20 - Mar 25, 2024", start: new Date(2024, 2, 20), end: new Date(2024, 2, 25), submitted: "Feb 15", duration: "5 Days", status: "CANCELLED", approver: "-", dot: false }
+    { id: 4, name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", type: "Annual Leave", icon: "annual", dates: "Mar 20 - Mar 25, 2024", start: new Date(2024, 2, 20), end: new Date(2024, 2, 25), submitted: "Feb 15", duration: "5 Days", status: "CANCELLED", approver: "-", dot: false },
+    { id: 5, name: "Marcus Chen", initial: "MC", bg: "#bfeadd", type: "Sick Leave", icon: "sick", dates: "Jun 10 - Jun 11, 2024", start: new Date(2024, 5, 10), end: new Date(2024, 5, 11), submitted: "Jun 08", duration: "2 Days", status: "Approved", approver: "Boss", dot: true },
+    { id: 6, name: "Elena Rodriguez", initial: "ER", bg: "#c4b5fd", type: "Annual Leave", icon: "annual", dates: "Jul 01 - Jul 05, 2024", start: new Date(2024, 6, 1), end: new Date(2024, 6, 5), submitted: "Jun 20", duration: "5 Days", status: "Approved", approver: "Boss", dot: true },
+    { id: 7, name: "James Wilson", initial: "JW", bg: "#e0f2fe", type: "Personal Leave", icon: "personal", dates: "Sep 15, 2024", start: new Date(2024, 8, 15), end: new Date(2024, 8, 15), submitted: "Sep 12", duration: "1 Day", status: "Approved", approver: "HR", dot: true },
+    { id: 8, name: "Sarah Connor", initial: "SC", bg: "#fef08a", type: "Sick Leave", icon: "sick", dates: "Nov 20 - Nov 22, 2024", start: new Date(2024, 10, 20), end: new Date(2024, 10, 22), submitted: "Nov 19", duration: "3 Days", status: "Pending", approver: "-", dot: true },
+    { id: 9, name: "Amanda Smith", initial: "AS", bg: "#fed7aa", type: "Annual Leave", icon: "annual", dates: "Dec 23 - Dec 31, 2024", start: new Date(2024, 11, 23), end: new Date(2024, 11, 31), submitted: "Nov 01", duration: "7 Days", status: "Approved", approver: "Boss", dot: true },
+    { id: 10, name: "David Kim", initial: "DK", bg: "#bae6fd", type: "Personal Leave", icon: "personal", dates: "Apr 08, 2024", start: new Date(2024, 3, 8), end: new Date(2024, 3, 8), submitted: "Apr 05", duration: "4 Hr", status: "Rejected", approver: "HR", dot: true },
+    { id: 11, name: "Lisa Park", initial: "LP", bg: "#fbcfe8", type: "Sick Leave", icon: "sick", dates: "Feb 14 - Feb 16, 2024", start: new Date(2024, 1, 14), end: new Date(2024, 1, 16), submitted: "Feb 13", duration: "3 Days", status: "Approved", approver: "Boss", dot: true },
+    { id: 12, name: "Tom Hardy", initial: "TH", bg: "#a7f3d0", type: "Annual Leave", icon: "annual", dates: "Jan 02 - Jan 06, 2024", start: new Date(2024, 0, 2), end: new Date(2024, 0, 6), submitted: "Dec 20", duration: "5 Days", status: "Approved", approver: "HR", dot: true },
   ]
 
   let filteredData = filter === "all"
@@ -185,7 +209,7 @@ export default function Reports({ onNavigate }) {
                 </tr>
               </thead>
               <tbody>
-                {balances.map((row, idx) => {
+                {paginatedBalances.map((row, idx) => {
                   const getQuotaStyle = (quota) => {
                     if (!quota) return "text-[#475569]";
                     const parts = quota.split(" / ");
@@ -232,13 +256,34 @@ export default function Reports({ onNavigate }) {
             </table>
           </div>
 
-          <div className="flex justify-end pt-4 mt-2 px-8 pb-4">
+          <div className="flex items-center justify-between pt-4 mt-2 px-8 pb-4">
+            <p className="text-[13px] text-[#94a3b8] font-bold">
+              Showing {balStartItem}-{balEndItem} of {balances.length} employees
+            </p>
             <div className="flex items-center gap-2 text-[#475569] font-bold text-[13px]">
-              <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors text-[#94a3b8]">&lt;</button>
-              <button className="w-8 h-8 rounded-full bg-[#323940] text-white flex items-center justify-center">1</button>
-              <button className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">2</button>
-              <button className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">3</button>
-              <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors text-[#64748b]">&gt;</button>
+              <button
+                onClick={() => setBalancesPage(p => Math.max(1, p - 1))}
+                disabled={balancesPage === 1}
+                className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors ${balancesPage === 1 ? 'text-[#d1d5db] cursor-not-allowed' : 'text-[#94a3b8]'}`}
+              >&lt;</button>
+              {Array.from({ length: balTotalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setBalancesPage(page)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${page === balancesPage
+                    ? "text-white"
+                    : "hover:bg-gray-100 text-[#94a3b8]"
+                  }`}
+                  style={page === balancesPage ? { backgroundColor: '#323940' } : {}}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setBalancesPage(p => Math.min(balTotalPages, p + 1))}
+                disabled={balancesPage === balTotalPages}
+                className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors ${balancesPage === balTotalPages ? 'text-[#d1d5db] cursor-not-allowed' : 'text-[#64748b]'}`}
+              >&gt;</button>
             </div>
           </div>
         </div>
@@ -419,9 +464,10 @@ export default function Reports({ onNavigate }) {
                   key={page}
                   onClick={() => setCurrentPage(page)}
                   className={`w-8 h-8 rounded-full text-[13px] font-bold transition-all ${page === currentPage
-                    ? "bg-[#323940] text-white"
+                    ? "text-white"
                     : "text-[#94a3b8] hover:bg-gray-100 hover:text-[#323940]"
                     }`}
+                  style={page === currentPage ? { backgroundColor: '#323940' } : {}}
                 >
                   {page}
                 </button>
