@@ -38,14 +38,42 @@ function formatDate(value) {
 
 function formatDays(value) {
   const numeric = Number(value || 0)
-  if (Number.isInteger(numeric)) return String(numeric)
-  return numeric.toFixed(2).replace(/\.?0+$/, "")
+  const oneDecimal = numeric.toFixed(1)
+  return oneDecimal.endsWith(".0") ? String(Math.trunc(numeric)) : oneDecimal
 }
 
 function formatDateRange(startDate, endDate) {
   const start = formatDate(startDate)
   const end = formatDate(endDate)
   return start === end ? start : `${start} - ${end}`
+}
+
+function formatDateShort(dateString) {
+  if (!dateString) return "-"
+  return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function isSameDayStr(startDate, endDate) {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  return start.getFullYear() === end.getFullYear()
+    && start.getMonth() === end.getMonth()
+    && start.getDate() === end.getDate()
+}
+
+function formatDurationText(totalDays) {
+  const totalHours = Number(totalDays || 0) * 8
+  const days = Math.floor(totalHours / 8)
+  const remainder = totalHours - (days * 8)
+  const hours = Math.floor(remainder)
+  const minutes = Math.round((remainder - hours) * 60)
+  const parts = []
+
+  if (days > 0) parts.push(`${days}d`)
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+
+  return parts.join(" ") || "0h"
 }
 
 function getBarWidth(used, total) {
@@ -116,6 +144,13 @@ function getRequestTheme(status = "") {
   if (normalized === "acknowledged") return { bg: "#93c5fd", text: "#1e3a8a" }
   if (normalized === "cancelled") return { bg: "#e2e8f0", text: "#475569" }
   return { bg: "#fee481", text: "#6b5413" }
+}
+
+function getRequestIconData(typeName = "") {
+  const normalized = typeName.toLowerCase()
+  if (normalized.includes("sick")) return { Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" }
+  if (normalized.includes("personal")) return { Icon: Users, color: "#d06ab0", bg: "#f8e0f0" }
+  return { Icon: Umbrella, color: "#1982c4", bg: "#e6f2fb" }
 }
 
 export default function EmployeeProfile({ onNavigate }) {
@@ -376,7 +411,10 @@ export default function EmployeeProfile({ onNavigate }) {
                 <div className="bg-white rounded-[40px] p-8 pb-10 shadow-sm flex flex-col w-full h-full">
                   <div className="flex items-start justify-between mb-8 px-2 mt-2">
                     <div className="flex items-center gap-3">
-                      <h3 className="font-bold text-[22px] font-fredoka text-[#3f4a51] tracking-wide m-0">Recent Activity</h3>
+                      <div>
+                        <h3 className="font-bold text-[22px] font-fredoka text-[#3f4a51] tracking-wide m-0">Recent Leave Requests</h3>
+                        <p className="text-[14px] font-medium text-[#94a3b8] mt-1">Latest leave request activity</p>
+                      </div>
                     </div>
                     <button
                       onClick={() => setShowAllActivities(!showAllActivities)}
@@ -387,35 +425,43 @@ export default function EmployeeProfile({ onNavigate }) {
                   </div>
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                     {displayedActivities.length === 0 ? (
-                      <div className="flex items-center justify-between p-5 bg-[#f9fafb] rounded-[24px]">
-                        <p className="text-[13px] font-medium text-[#94a3b8]">No leave request history yet.</p>
-                      </div>
+                      <p className="text-[14px] font-medium text-center text-[#94a3b8] py-8">No leave request history yet.</p>
                     ) : displayedActivities.map((request) => {
-                      const { Icon, textClass } = getBalanceTheme(request.leave_type_name)
+                      const { Icon, color, bg } = getRequestIconData(request.leave_type_name)
                       const statusTheme = getRequestTheme(request.status)
+                      const dateRange = isSameDayStr(request.start_date, request.end_date)
+                        ? formatDateShort(request.start_date)
+                        : `${formatDateShort(request.start_date)} - ${formatDateShort(request.end_date)}`
 
                       return (
-                        <div key={request.id} className="flex items-center justify-between p-5 bg-[#f9fafb] rounded-[24px]">
-                          <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-full flex items-center justify-center p-3 bg-white shadow-sm">
-                              <Icon className={textClass} strokeWidth={2.5} />
+                        <div key={request.id} className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-colors">
+                          <div className="flex items-center gap-2 min-w-[130px]">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
+                              <Icon size={15} color={color} strokeWidth={2.5} />
                             </div>
                             <div>
-                              <p className="font-bold text-[16px] font-fredoka text-[#3f4a51] mb-1">{request.leave_type_name}</p>
-                              <p className="text-[13px] font-medium text-[#94a3b8]">
-                                {formatDateRange(request.start_date, request.end_date)} · {formatDays(request.total_days)} day(s)
-                              </p>
+                              <p className="text-[10px] font-[800] tracking-widest uppercase text-[#94a3b8]">Type</p>
+                              <p className="font-bold text-[13px] text-[#3f4a51]">{request.leave_type_name}</p>
                             </div>
                           </div>
-                          <span
-                            className="px-5 py-2 rounded-full text-[12px] font-bold tracking-wide"
-                            style={{
-                              backgroundColor: statusTheme.bg,
-                              color: statusTheme.text
-                            }}
-                          >
-                            {request.status}
-                          </span>
+
+                          <div className="min-w-[140px]">
+                            <p className="text-[10px] font-[800] tracking-widest uppercase text-[#94a3b8]">Duration</p>
+                            <p className="font-bold text-[13px] text-[#3f4a51]">{dateRange}</p>
+                            <p className="text-[11px] text-[#94a3b8]">{formatDurationText(request.total_days)}</p>
+                          </div>
+
+                          <div className="ml-auto">
+                            <span
+                              className="px-4 py-1.5 rounded-full text-[11px] font-[800] tracking-wide uppercase whitespace-nowrap"
+                              style={{
+                                backgroundColor: statusTheme.bg,
+                                color: statusTheme.text
+                              }}
+                            >
+                              {request.status}
+                            </span>
+                          </div>
                         </div>
                       )
                     })}
