@@ -1,6 +1,7 @@
-import { useState } from "react"
-import { Users, Briefcase, UserCog, User, UserPlus, IdCardLanyard, ChevronLeft, ChevronRight, PenLine, Search, Bell, Settings } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Users, UserRoundX, UserCheck, UserCog, User, UserPlus, IdCardLanyard, ChevronLeft, ChevronRight, PenLine, Search, Bell, Settings, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import api from "../../services/api"
 
 export default function SuperAdminDashboard({ onNavigate }) {
   const navigate = useNavigate()
@@ -12,26 +13,44 @@ export default function SuperAdminDashboard({ onNavigate }) {
   // Add user form
   const [newUser, setNewUser] = useState({ fullName: '', email: '', username: '', role: 'Employee', password: '' })
 
-  const [allUsers, setAllUsers] = useState([
-    { id: 1, name: "Alex Thompson", email: "alex.t@happyhub.com", role: "HR", status: "Active", img: "3" },
-    { id: 2, name: "Jordan Smith", email: "j.smith@happyhub.com", role: "Employee", status: "Resigned", img: null, initial: "JS", initialBg: "#fef08a" },
-    { id: 3, name: "Marcus Chen", email: "m.chen@happyhub.com", role: "Manager", status: "Active", img: "11" },
-    { id: 4, name: "Sarah Jenkins", email: "s.jenkins@happyhub.com", role: "HR", status: "Resigned", img: "5" },
-    { id: 5, name: "Emily Watson", email: "e.watson@happyhub.com", role: "Employee", status: "Active", img: "9" },
-    { id: 6, name: "David Park", email: "d.park@happyhub.com", role: "Manager", status: "Active", img: "12" },
-    { id: 7, name: "Lisa Chang", email: "l.chang@happyhub.com", role: "Employee", status: "Active", img: "1" },
-    { id: 8, name: "Robert Kim", email: "r.kim@happyhub.com", role: "HR", status: "Active", img: "8" },
-    { id: 9, name: "Nina Patel", email: "n.patel@happyhub.com", role: "Employee", status: "Resigned", img: null, initial: "NP", initialBg: "#c4b5fd" },
-    { id: 10, name: "Tom Hardy", email: "t.hardy@happyhub.com", role: "Manager", status: "Active", img: null, initial: "TH", initialBg: "#a7f3d0" },
-    { id: 11, name: "Rachel Green", email: "r.green@happyhub.com", role: "Employee", status: "Active", img: "7" },
-    { id: 12, name: "Oliver Wang", email: "o.wang@happyhub.com", role: "Employee", status: "Active", img: null, initial: "OW", initialBg: "#fca5a5" },
-  ])
+  const [allUsers, setAllUsers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true)
+      try {
+        const { data } = await api.get('/users')
+        const colors = ['#fef08a', '#c4b5fd', '#a7f3d0', '#fca5a5', '#bae6fd']
+
+        const mappedUsers = data.users.map((u, i) => {
+          const nameStr = u.full_name || u.username || 'Unknown User'
+          const initials = nameStr.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+          return {
+            id: u.id,
+            name: nameStr,
+            email: u.email || '',
+            role: u.role || 'Employee',
+            status: u.is_active === 1 ? 'Active' : 'Resigned',
+            img: null,
+            initial: initials || 'XX',
+            initialBg: colors[i % colors.length]
+          }
+        })
+        setAllUsers(mappedUsers)
+      } catch (err) {
+        console.error('Failed to fetch users:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchUsers()
+  }, [])
 
   // Stats computed from data
   const totalUsers = allUsers.length
-  const totalHR = allUsers.filter(u => u.role === 'HR').length
-  const totalManagers = allUsers.filter(u => u.role === 'Manager').length
-  const totalEmployees = allUsers.filter(u => u.role === 'Employee').length
+  const totalActive = allUsers.filter(u => u.status === 'Active').length
+  const totalResigned = allUsers.filter(u => u.status === 'Resigned').length
 
   // Filter
   const filteredUsers = searchTerm
@@ -69,9 +88,8 @@ export default function SuperAdminDashboard({ onNavigate }) {
   // Stat cards data
   const stats = [
     { label: 'TOTAL USERS', value: totalUsers.toLocaleString(), icon: Users, iconBg: '#eef2f9', iconColor: '#4c6367' },
-    { label: 'TOTAL HR', value: totalHR.toLocaleString(), icon: IdCardLanyard, iconBg: '#EFCFFE', iconColor: '#6F557D' },
-    { label: 'TOTAL MANAGERS', value: totalManagers.toLocaleString(), icon: UserCog, iconBg: '#FEF3C7', iconColor: '#B45309' },
-    { label: 'TOTAL EMPLOYEES', value: totalEmployees.toLocaleString(), icon: User, iconBg: '#fde2e4', iconColor: '#c75050' },
+    { label: 'TOTAL ACTIVE', value: totalActive.toLocaleString(), icon: UserCheck, iconBg: '#d1f2e8', iconColor: '#1a7f5a' },
+    { label: 'TOTAL RESIGNED', value: totalResigned.toLocaleString(), icon: UserRoundX, iconBg: '#fde2e4', iconColor: '#b5283d' },
   ]
 
   // Get greeting
@@ -138,7 +156,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {stats.map((stat, idx) => (
             <div key={idx} className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
@@ -189,7 +207,12 @@ export default function SuperAdminDashboard({ onNavigate }) {
 
           {/* Table Rows */}
           <div>
-            {paginatedUsers.length === 0 ? (
+            {isLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center text-[#94a3b8] gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#3ea8e5]" />
+                <p className="text-[15px] font-bold">Synchronizing user data...</p>
+              </div>
+            ) : paginatedUsers.length === 0 ? (
               <div className="py-16 text-center text-[#94a3b8] text-[15px] font-bold">
                 No users found.
               </div>

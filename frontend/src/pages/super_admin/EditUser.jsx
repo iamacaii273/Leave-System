@@ -1,43 +1,102 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Camera, ChevronDown, Eye, EyeOff, CheckCircle, Ban, Shield, Bell, Settings, User, Briefcase, Lock } from "lucide-react"
+import { Camera, ChevronDown, CheckCircle, Ban, Shield, Bell, Settings, User, Briefcase, Lock, Loader2 } from "lucide-react"
+import api from "../../services/api"
+
+const ROLES = [
+  { id: 'rl000001-0000-0000-0000-000000000001', name: 'Employee' },
+  { id: 'rl000001-0000-0000-0000-000000000002', name: 'Manager' },
+  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR Admin' }
+];
+
+const POSITIONS = [
+  { id: 'ps000001-0000-0000-0000-000000000001', name: 'Developer' },
+  { id: 'ps000001-0000-0000-0000-000000000002', name: 'HR Officer' },
+  { id: 'ps000001-0000-0000-0000-000000000010', name: 'Team Manager' }
+];
+
+const PHONE_PREFIXES = [
+  { code: '+66', label: '+66 (TH)', max: 10, placeholder: "0812345678" },
+  { code: '+1', label: '+1 (US)', max: 10, placeholder: "5550000000" },
+  { code: '+44', label: '+44 (UK)', max: 11, placeholder: "7000000000" },
+  { code: '+81', label: '+81 (JP)', max: 11, placeholder: "9000000000" },
+  { code: '+65', label: '+65 (SG)', max: 8, placeholder: "80000000" }
+];
 
 export default function EditUser({ onNavigate }) {
   const navigate = useNavigate()
   const { userId } = useParams()
   const fileInputRef = useRef(null)
 
-  // Mock user data (in production, fetch by userId)
-  const mockUsers = {
-    1: { name: "Alex Thompson", email: "alex.t@happyhub.com", username: "a.thompson", role: "HR", status: "Active", img: "3", joinDate: "Mar 08, 2021" },
-    2: { name: "Jordan Smith", email: "j.smith@happyhub.com", username: "j.smith", role: "Employee", status: "Resigned", img: null, initial: "JS", initialBg: "#fef08a", joinDate: "Jun 15, 2022" },
-    3: { name: "Marcus Chen", email: "m.chen@happyhub.com", username: "m.chen", role: "Manager", status: "Active", img: "11", joinDate: "Jan 10, 2020" },
-    4: { name: "Sarah Jenkins", email: "sarah.jenkins@sanctuary.hr", username: "s.jenkins", role: "HR Admin", status: "Active", img: "5", joinDate: "Jan 12, 2022" },
-    5: { name: "Emily Watson", email: "e.watson@happyhub.com", username: "e.watson", role: "Employee", status: "Active", img: "9", joinDate: "Sep 22, 2023" },
-    6: { name: "David Park", email: "d.park@happyhub.com", username: "d.park", role: "Manager", status: "Active", img: "12", joinDate: "Feb 05, 2021" },
-    7: { name: "Lisa Chang", email: "l.chang@happyhub.com", username: "l.chang", role: "Employee", status: "Active", img: "1", joinDate: "Apr 18, 2022" },
-    8: { name: "Robert Kim", email: "r.kim@happyhub.com", username: "r.kim", role: "HR", status: "Active", img: "8", joinDate: "Nov 30, 2020" },
-  }
-
-  const userData = mockUsers[userId] || mockUsers[4] // fallback to Sarah Jenkins like mockup
-
   const [form, setForm] = useState({
-    firstName: userData.name.split(' ')[0] || '',
-    lastName: userData.name.split(' ').slice(1).join(' ') || '',
-    employeeId: 'EMP-2022-042',
-    username: userData.username,
-    email: userData.email,
-    phone: '+1 (555) 234-5678',
-    role: userData.role,
-    position: 'Human Resources Lead',
-    password: 'password123',
-    confirmPassword: 'password123',
-    status: userData.status
+    fullName: '',
+    email: '',
+    phonePrefix: '+66',
+    phone: '',
+    role: '',
+    position: '',
+    password: '',
+    confirmPassword: '',
+    status: 'Active',
+    hireDate: ''
   })
 
-  const [showPassword, setShowPassword] = useState(false)
-  const [profileImg, setProfileImg] = useState(userData.img ? `https://i.pravatar.cc/250?img=${userData.img}` : null)
+  const [userData, setUserData] = useState(null)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
+  const [profileImg, setProfileImg] = useState(null)
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data } = await api.get(`/users/${userId}`)
+        const u = data.user
+        setUserData({
+          ...u,
+          initial: u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+          joinDate: u.hire_date ? new Date(u.hire_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : 'Unknown'
+        })
+
+        let pref = '+66'
+        let num = u.phone || ''
+        const matchedPrefix = PHONE_PREFIXES.find(p => num.startsWith(p.code + ' '))
+        if (matchedPrefix) {
+          pref = matchedPrefix.code
+          num = num.replace(matchedPrefix.code + ' ', '')
+        }
+
+        setForm({
+          fullName: u.full_name || '',
+          email: u.email || '',
+          phonePrefix: pref,
+          phone: num,
+          role: u.role_id || '',
+          position: u.position_id || '',
+          password: '',
+          confirmPassword: '',
+          status: u.is_active === 1 ? 'Active' : 'Resigned',
+          hireDate: u.hire_date ? u.hire_date.split('T')[0] : ''
+        })
+      } catch (err) {
+        console.error(err)
+        setErrorMsg('Failed to load user data.')
+      } finally {
+        setLoadingInitial(false)
+      }
+    }
+    if (userId) fetchUser()
+  }, [userId])
+
+  const selectedPhoneConfig = PHONE_PREFIXES.find(p => p.code === form.phonePrefix) || PHONE_PREFIXES[0]
+
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '')
+    if (digitsOnly.length <= selectedPhoneConfig.max) {
+      setForm(p => ({ ...p, phone: digitsOnly }))
+    }
+  }
 
   const handleProfilePicChange = (e) => {
     const file = e.target.files[0]
@@ -48,15 +107,50 @@ export default function EditUser({ onNavigate }) {
     }
   }
 
-  const handleSave = () => {
-    setShowSuccess(true)
-    setTimeout(() => {
-      setShowSuccess(false)
-      navigate('/superadmin/dashboard')
-    }, 2000)
+  const handleSave = async () => {
+    setErrorMsg('')
+    if (form.password && form.password !== form.confirmPassword) {
+      setErrorMsg("Passwords do not match!")
+      return
+    }
+
+    setSaving(true)
+    try {
+      const payload = {
+        username: form.fullName.trim(),
+        full_name: form.fullName.trim(),
+        email: form.email,
+        phone: form.phone ? `${form.phonePrefix} ${form.phone}` : null,
+        role_id: form.role,
+        position_id: form.position,
+        hire_date: form.hireDate,
+        is_active: form.status === 'Active' ? 1 : 0
+      }
+      if (form.password) payload.password = form.password
+
+      await api.put(`/users/${userId}`, payload)
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+        navigate('/superadmin/dashboard')
+      }, 2000)
+    } catch (err) {
+      console.error(err)
+      setErrorMsg(err.response?.data?.message || 'Failed to update user profile.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const fullName = `${form.firstName} ${form.lastName}`.trim()
+  if (loadingInitial) {
+    return (
+      <div className="min-h-screen bg-[#eef2f9] flex items-center justify-center font-nunito">
+        <Loader2 className="w-10 h-10 animate-spin text-[#3ea8e5]" />
+      </div>
+    )
+  }
+
+  const fullName = form.fullName.trim()
 
   // Privilege descriptions based on role
   const privilegeDesc = {
@@ -103,7 +197,7 @@ export default function EditUser({ onNavigate }) {
 
       <main className="max-w-[1000px] mx-auto px-6 py-12 w-full flex-grow">
         {/* Title */}
-        <div className="mb-10 text-center lg:text-left">
+        <div className="mb-6 text-center lg:text-left">
           <h1 className="text-[42px] font-fredoka font-bold text-[#1f3747] mb-2 leading-tight">
             Edit User Profile
           </h1>
@@ -112,9 +206,16 @@ export default function EditUser({ onNavigate }) {
           </p>
         </div>
 
+        {/* Error Message */}
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-xl bg-[#fee2e2] text-[#991b1b] font-bold text-[14px] max-w-full lg:max-w-none">
+            {errorMsg}
+          </div>
+        )}
+
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-[280px_1fr] gap-8">
-          
+
           {/* Left: Profile Card */}
           <div className="flex flex-col gap-6">
             <div className="bg-white rounded-[24px] p-8 shadow-sm flex flex-col items-center">
@@ -170,7 +271,7 @@ export default function EditUser({ onNavigate }) {
 
           {/* Right: Form */}
           <div className="bg-white rounded-[32px] p-10 shadow-sm">
-            
+
             {/* Personal Identity */}
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-full bg-[#dcf5eb] flex items-center justify-center">
@@ -179,32 +280,15 @@ export default function EditUser({ onNavigate }) {
               <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747]">Personal Identity</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+            <div className="grid grid-cols-1 mb-10">
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Employee ID</label>
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Full Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  value={form.employeeId}
-                  readOnly
-                  className="bg-[#f1f5f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#64748b] outline-none w-full"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">First Name</label>
-                <input
-                  type="text"
-                  value={form.firstName}
-                  onChange={(e) => setForm(p => ({ ...p, firstName: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Last Name</label>
-                <input
-                  type="text"
-                  value={form.lastName}
-                  onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full"
+                  placeholder="Enter full name"
+                  value={form.fullName}
+                  onChange={(e) => setForm(p => ({ ...p, fullName: e.target.value }))}
+                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full placeholder:text-[#cbd5e1] placeholder:font-semibold"
                 />
               </div>
             </div>
@@ -219,88 +303,112 @@ export default function EditUser({ onNavigate }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Email Address</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full"
-                />
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Phone Number <span className="text-red-500">*</span></label>
+                <div className="flex gap-2">
+                  <div className="relative w-[110px]">
+                    <select
+                      value={form.phonePrefix}
+                      onChange={(e) => setForm(p => ({ ...p, phonePrefix: e.target.value, phone: '' }))}
+                      className="bg-[#f4f7f9] rounded-full py-3 pl-4 pr-8 !text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
+                    >
+                      {PHONE_PREFIXES.map(pf => (
+                        <option key={pf.code} value={pf.code}>{pf.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder={selectedPhoneConfig.placeholder}
+                    value={form.phone}
+                    onChange={handlePhoneChange}
+                    className="bg-[#f4f7f9] flex-1 rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all placeholder:text-[#cbd5e1] placeholder:font-semibold"
+                  />
+                </div>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Phone Number</label>
-                <input
-                  type="text"
-                  value={form.phone}
-                  onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full"
-                />
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Hire Date <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={form.hireDate}
+                    onChange={(e) => setForm(p => ({ ...p, hireDate: e.target.value }))}
+                    className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full placeholder:text-[#cbd5e1] placeholder:font-semibold appearance-none"
+                  />
+                </div>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Role</label>
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Role <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <select
                     value={form.role}
                     onChange={(e) => setForm(p => ({ ...p, role: e.target.value }))}
                     className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                   >
-                    <option>Employee</option>
-                    <option>HR Admin</option>
-                    <option>Manager</option>
-                    <option>Super Admin</option>
+                    {ROLES.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
                   </select>
                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Position</label>
-                <input
-                  type="text"
-                  value={form.position}
-                  onChange={(e) => setForm(p => ({ ...p, position: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full"
-                />
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Position <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select
+                    value={form.position}
+                    onChange={(e) => setForm(p => ({ ...p, position: e.target.value }))}
+                    className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
+                  >
+                    {POSITIONS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+                </div>
               </div>
             </div>
 
             {/* Access Credentials */}
             <div className="flex items-center gap-3 mb-6 bg-[#f4f7f9] p-4 rounded-2xl">
-               <div className="flex items-center gap-3 w-full">
-                 <div className="w-8 h-8 rounded-full bg-[#d4f0f0] flex items-center justify-center">
-                   <Lock size={16} className="text-[#0d9488]" />
-                 </div>
-                 <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747]">Access Credentials</h3>
-               </div>
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-8 h-8 rounded-full bg-[#d4f0f0] flex items-center justify-center">
+                  <Lock size={16} className="text-[#0d9488]" />
+                </div>
+                <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747]">Access Credentials</h3>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10 bg-[#f9fafb] p-6 rounded-3xl">
               <div className="flex flex-col gap-2 md:col-span-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Username</label>
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Email Address (Login ID) <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input
-                    type="text"
-                    value={form.username}
-                    onChange={(e) => setForm(p => ({ ...p, username: e.target.value }))}
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
                     className="bg-white rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all w-full shadow-sm"
                   />
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Password</label>
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Password (Leave blank to keep current)</label>
                 <input
                   type="password"
+                  placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
-                  className="bg-white rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none w-full shadow-sm focus:ring-2 focus:ring-[#567278]/20 tracking-widest"
+                  className="bg-white rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none w-full shadow-sm focus:ring-2 focus:ring-[#567278]/20 tracking-widest placeholder:text-[#cbd5e1]"
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Confirm Password</label>
                 <input
                   type="password"
+                  placeholder="••••••••"
                   value={form.confirmPassword}
                   onChange={(e) => setForm(p => ({ ...p, confirmPassword: e.target.value }))}
-                  className="bg-white rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none w-full shadow-sm focus:ring-2 focus:ring-[#567278]/20 tracking-widest"
+                  className="bg-white rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none w-full shadow-sm focus:ring-2 focus:ring-[#567278]/20 tracking-widest placeholder:text-[#cbd5e1]"
                 />
               </div>
             </div>
@@ -340,11 +448,18 @@ export default function EditUser({ onNavigate }) {
               </button>
               <button
                 onClick={handleSave}
+                disabled={saving}
                 className="rounded-[18px] !px-8 !py-3 font-bold text-[15px] transition-colors shadow-sm flex items-center gap-2"
-                style={{ backgroundColor: '#dcf5eb', color: '#1a7f5a' }}
+                style={{ backgroundColor: saving ? '#edf2f7' : '#dcf5eb', color: saving ? '#a0aec0' : '#1a7f5a' }}
               >
-                <Shield size={16} />
-                Save Changes
+                {saving ? (
+                  <span>Loading...</span>
+                ) : (
+                  <>
+                    <Shield size={16} />
+                    Save Changes
+                  </>
+                )}
               </button>
             </div>
           </div>
