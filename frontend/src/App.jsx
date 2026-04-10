@@ -5,6 +5,7 @@ import Login from './pages/login/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import EmployeeApp from './pages/employee/EmployeeApp'
 import ManagerApp from './pages/manager/ManagerApp'
+import SuperAdminApp from './pages/super_admin/SuperAdminApp'
 import Unauthorized from './pages/Unauthorized'
 
 import './index.css'
@@ -31,6 +32,13 @@ export default function App() {
           <Route path="/manager/*" element={
             <ProtectedRoute allowedRoles={["Manager"]}>
               <ManagerApp />
+            </ProtectedRoute>
+          } />
+
+          {/* Super Admin pages — Super Admin role only */}
+          <Route path="/superadmin/*" element={
+            <ProtectedRoute allowedRoles={["Super Admin"]}>
+              <SuperAdminApp />
             </ProtectedRoute>
           } />
 
