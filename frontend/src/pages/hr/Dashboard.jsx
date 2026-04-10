@@ -54,6 +54,7 @@ export default function Dashboard({ onNavigate }) {
     pending_today: 0,
   })
   const [employees, setEmployees] = useState([])
+  const [trendData, setTrendData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -63,13 +64,28 @@ export default function Dashboard({ onNavigate }) {
         setLoading(true)
         setError("")
 
-        const { data } = await api.get("/reports/dashboard")
+        const [dashRes, monthlyRes] = await Promise.all([
+          api.get("/reports/dashboard"),
+          api.get("/reports/monthly")
+        ])
+
         setStats({
-          total_employees: Number(data?.stats?.total_employees || 0),
-          requests_today: Number(data?.stats?.requests_today || 0),
-          pending_today: Number(data?.stats?.pending_today || 0),
+          total_employees: Number(dashRes.data?.stats?.total_employees || 0),
+          requests_today: Number(dashRes.data?.stats?.requests_today || 0),
+          pending_today: Number(dashRes.data?.stats?.pending_today || 0),
         })
-        setEmployees(data?.employees || [])
+        setEmployees(dashRes.data?.employees || [])
+
+        // Build full 12-month array, fill 0 for months with no data
+        const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        const rawMonthly = monthlyRes.data?.monthly || []
+        const byMonth = {}
+        rawMonthly.forEach(r => { byMonth[r.month] = Number(r.total_days || 0) })
+        const built = MONTHS.map((label, i) => ({
+          month: label,
+          value: byMonth[i + 1] || 0
+        }))
+        setTrendData(built)
       } catch (err) {
         console.error("HR dashboard error:", err)
         setError("Unable to load dashboard data right now.")
@@ -185,31 +201,44 @@ export default function Dashboard({ onNavigate }) {
 
           <div className="bg-white rounded-[40px] p-8 shadow-sm flex flex-col min-h-[400px] self-start w-full">
             <h3 className="font-bold text-[22px] font-fredoka text-[#1f3747] tracking-wide mb-1">Leave Trends</h3>
-            <p className="text-[13px] font-medium text-[#7a8c98] mb-8">Monthly volume by request type</p>
+            <p className="text-[13px] font-medium text-[#7a8c98] mb-8">Total leave days requested per month</p>
 
-            <div className="flex-grow flex items-end justify-between px-6 pt-8 pb-2 relative h-48">
-              {[
-                { month: "Jan", value: 45, height: "80%" },
-                { month: "Feb", value: 20, height: "40%" },
-                { month: "Mar", value: 30, height: "60%" },
-                { month: "Apr", value: 65, height: "100%" },
-                { month: "May", value: 15, height: "25%" },
-                { month: "Jun", value: 30, height: "60%" }
-              ].map((item, index) => (
-                <div key={index} className="flex flex-col items-center gap-4 group cursor-pointer">
-                  <div className="relative flex justify-center w-full h-full items-end" style={{ height: "140px" }}>
-                    <div className="absolute -top-8 bg-[#3f4a51] text-white text-[11px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                      {item.value} days
-                    </div>
-                    <div
-                      className="w-10 bg-[#006dae] rounded-t-[8px] hover:bg-[#3ea8e5] transition-colors"
-                      style={{ height: item.height }}
-                    ></div>
-                  </div>
-                  <span className="text-[12px] text-[#7a8c98] font-bold">{item.month}</span>
+            {loading ? (
+              <div className="flex-grow flex items-center justify-center text-[#94a3b8] font-bold text-[14px]">Loading chart...</div>
+            ) : (() => {
+              const maxVal = Math.max(...trendData.map(d => d.value), 1)
+              const currentMonth = new Date().getMonth() // 0-indexed
+              return (
+                <div className="flex-grow flex items-end justify-between px-2 pt-8 pb-2 relative">
+                  {trendData.map((item, index) => {
+                    const heightPct = Math.round((item.value / maxVal) * 100)
+                    const isCurrentMonth = index === currentMonth
+                    const hasData = item.value > 0
+                    return (
+                      <div key={index} className="flex flex-col items-center gap-2 group cursor-pointer flex-1">
+                        <div className="relative flex justify-center w-full items-end" style={{ height: "140px" }}>
+                          {hasData && (
+                            <div className="absolute -top-8 bg-[#1f3747] text-white text-[11px] font-bold py-1 px-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
+                              {item.value} days
+                            </div>
+                          )}
+                          <div
+                            className="w-full max-w-[32px] rounded-t-[8px] transition-colors"
+                            style={{
+                              height: hasData ? `${Math.max(heightPct, 6)}%` : "4px",
+                              backgroundColor: isCurrentMonth ? "#fcac84" : (hasData ? "#006dae" : "#e8ecf0"),
+                            }}
+                          />
+                        </div>
+                        <span className={`text-[11px] font-bold ${ isCurrentMonth ? "text-[#aa6b4c]" : "text-[#7a8c98]" }`}>
+                          {item.month}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
+              )
+            })()}
           </div>
         </div>
       </main>

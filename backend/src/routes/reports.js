@@ -160,7 +160,7 @@ router.get("/leave-summary", ...guard, async (req, res) => {
   }
 });
 
-// GET /monthly - Monthly leave request counts for the given year.
+// GET /monthly - Monthly leave days for the given year.
 router.get("/monthly", ...guard, async (req, res) => {
   const year = parseInt(req.query.year, 10) || new Date().getFullYear();
 
@@ -171,11 +171,12 @@ router.get("/monthly", ...guard, async (req, res) => {
   try {
     const [monthly] = await pool.query(
       `SELECT
-         MONTH(submitted_at) AS month,
-         COUNT(*) AS total_requests,
-         SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
-         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
-         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending
+         MONTH(submitted_at)                   AS month,
+         COUNT(*)                               AS total_requests,
+         COALESCE(SUM(total_days), 0)           AS total_days,
+         SUM(CASE WHEN status = 'approved'  THEN total_days ELSE 0 END) AS approved_days,
+         SUM(CASE WHEN status = 'rejected'  THEN 1 ELSE 0 END) AS rejected,
+         SUM(CASE WHEN status = 'pending'   THEN 1 ELSE 0 END) AS pending
        FROM leave_requests
        WHERE YEAR(submitted_at) = ?
        GROUP BY MONTH(submitted_at)

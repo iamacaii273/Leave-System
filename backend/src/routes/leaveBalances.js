@@ -3,13 +3,66 @@ const { v4: uuidv4 } = require('uuid')
 const pool = require('../db')
 const { verifyToken, requireRole } = require('../middleware/auth')
 
-// ─── GET /api/leave-balances/me ───────────────────────────────────────────────
 // Get the current logged-in user's leave balances for the current year.
 // Protected: all authenticated users.
+// Also auto-provisions missing leave balances for new active leave types.
 router.get('/me', verifyToken, async (req, res) => {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
 
   try {
+    // 1. Fetch user's hire date to calculate service months
+    const [userRows] = await pool.query(
+      'SELECT hire_date FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    let serviceMonths = 0;
+    if (userRows.length > 0 && userRows[0].hire_date) {
+      const hireDate = new Date(userRows[0].hire_date);
+      const now = new Date();
+      serviceMonths =
+        (now.getFullYear() - hireDate.getFullYear()) * 12 +
+        (now.getMonth() - hireDate.getMonth());
+    }
+
+    // 2. Fetch all active leave types
+    const [activeTypes] = await pool.query(
+      'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1'
+    );
+
+    // 3. Fetch existing balances for this year
+    const [existingBalances] = await pool.query(
+      'SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?',
+      [req.user.id, currentYear]
+    );
+    const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
+
+    // 4. Determine missing balances
+    const missingTypes = activeTypes.filter(
+      t => !existingTypeIds.has(t.id) && serviceMonths >= t.min_service_months
+    );
+
+    // 5. Insert missing balances
+    if (missingTypes.length > 0) {
+      const inserts = missingTypes.map(t => [
+        uuidv4(),
+        req.user.id,
+        t.id,
+        currentYear,
+        t.default_days_per_year,
+        0, // used_days
+        t.default_days_per_year, // remaining_days
+      ]);
+
+      await pool.query(
+        `INSERT INTO leave_balances
+           (id, user_id, leave_type_id, year, total_days, used_days, remaining_days)
+         VALUES ?`,
+        [inserts]
+      );
+    }
+
+    // 6. Fetch the updated full list of balances
     const [rows] = await pool.query(
       `SELECT
          lb.id,
@@ -26,16 +79,16 @@ router.get('/me', verifyToken, async (req, res) => {
        WHERE lb.user_id = ?
          AND lb.year   = ?
        ORDER BY lt.name ASC`,
-      [req.user.id, currentYear],
-    )
+      [req.user.id, currentYear]
+    );
 
     res.json({
       year: currentYear,
       balances: rows,
-    })
+    });
   } catch (err) {
-    console.error('GET /leave-balances/me error:', err)
-    res.status(500).json({ message: 'Internal server error.' })
+    console.error('GET /leave-balances/me error:', err);
+    res.status(500).json({ message: 'Internal server error.' });
   }
 })
 

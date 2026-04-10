@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Umbrella,
   Users,
@@ -16,11 +16,15 @@ import {
   Check,
 } from 'lucide-react'
 import Header from '../../components/Header'
+import api from '../../services/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function LeaveType({ onNavigate }) {
+  const { user } = useAuth()
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   const adminNavItems = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -29,38 +33,12 @@ export default function LeaveType({ onNavigate }) {
     { id: 'leave-type', label: 'Leave Type' }
   ]
 
-  const adminProfile = {
-    name: 'Admin User',
+  const adminProfile = user || {
+    full_name: 'Admin User',
     role: 'Global HR Manager'
   }
 
-  // Temporary list of leaves
-  const [leaveTypes, setLeaveTypes] = useState([
-    {
-      id: 1,
-      name: 'Vacation Leave',
-      quota: 6,
-      description: 'Standard annual leave for rest and recreation. Accrues monthly at a rate of 1.67 days.',
-      colorType: 'blue',
-      icon: Umbrella
-    },
-    {
-      id: 2,
-      name: 'Personal Leave',
-      quota: 3,
-      description: 'Flex time for appointments, family matters, or well-being days. Granted upfront at the start of the year.',
-      colorType: 'pink',
-      icon: Users
-    },
-    {
-      id: 3,
-      name: 'Sick Leave',
-      quota: 30,
-      description: 'Reserved for illness, injury, or medical recovery. Requires documentation for more than 3 consecutive days.',
-      colorType: 'orange',
-      icon: Thermometer
-    }
-  ])
+  const [leaveTypes, setLeaveTypes] = useState([])
 
   // Map abstract colors to Tailwind styles
   const colorStyles = {
@@ -89,10 +67,20 @@ export default function LeaveType({ onNavigate }) {
       iconBg: 'bg-[#ffe3c2]',
       iconColor: 'text-[#b86814]',
       btnBg: 'bg-[#ffe3c2]',
-      title: 'text-[#3E4249]', // Wait, title in mockup is dark slate or similar
+      title: 'text-[#3E4249]',
       desc: 'text-[#8d5415]',
       footer: 'border-[#e0a863]',
       footerText: 'text-[#9e5910]'
+    },
+    green: {
+      bg: 'bg-[#B1EFD8]',
+      iconBg: 'bg-[#d0f5e5]',
+      iconColor: 'text-[#0a5c3e]',
+      btnBg: 'bg-[#d0f5e5]',
+      title: 'text-[#0e7c53]',
+      desc: 'text-[#063322]',
+      footer: 'border-[#8edcbf]',
+      footerText: 'text-[#0a5c3e]'
     }
   }
 
@@ -108,7 +96,32 @@ export default function LeaveType({ onNavigate }) {
     reqAttachment: false
   })
 
-  // Dummy toggle component
+  useEffect(() => {
+    fetchLeaveTypes()
+  }, [])
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const res = await api.get('/leave-types')
+      const types = res.data.leaveTypes || []
+      const formatted = types.map(t => ({
+        id: t.id,
+        name: t.name,
+        quota: t.default_days_per_year,
+        description: t.description || 'No description provided.',
+        colorType: t.color_type || 'blue',
+        iconName: t.icon_name || 'umbrella',
+        reqAttachment: !!t.requires_attachment,
+        service: t.min_service_months || 0
+      }))
+      setLeaveTypes(formatted)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const Toggle = ({ active, onClick }) => (
     <div
       onClick={onClick}
@@ -132,28 +145,19 @@ export default function LeaveType({ onNavigate }) {
     }
   }
 
-  const getIconName = (IconComponent) => {
-    switch (IconComponent) {
-      case Umbrella: return 'umbrella'
-      case Thermometer: return 'thermometer'
-      case Users: return 'user'
-      case Plane: return 'plane'
-      case Smile: return 'smile'
-      case HeartHandshake: return 'heart'
-      case PartyPopper: return 'party'
-      case MoreHorizontal: return 'more'
-      default: return 'umbrella'
-    }
-  }
-
   const handleDelete = (id) => {
     setDeleteId(id)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      setLeaveTypes(leaveTypes.filter(leave => leave.id !== deleteId))
-      setDeleteId(null)
+      try {
+        await api.delete(`/leave-types/${deleteId}`)
+        setLeaveTypes(leaveTypes.filter(leave => leave.id !== deleteId))
+        setDeleteId(null)
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to delete leave type')
+      }
     }
   }
 
@@ -162,57 +166,68 @@ export default function LeaveType({ onNavigate }) {
       name: leave.name,
       description: leave.description,
       days: leave.quota,
-      service: '', // default empty
-      icon: getIconName(leave.icon),
+      service: leave.service,
+      icon: leave.iconName,
       color: leave.colorType,
-      reqManager: true,
-      carryover: false,
-      reqAttachment: false
+      reqManager: true, // Mocked for now if not in DB
+      carryover: false, // Mocked
+      reqAttachment: leave.reqAttachment
     })
     setEditingId(leave.id)
     setIsCreating(true)
   }
 
-  const handleSubmit = () => {
-    if (editingId) {
-      setLeaveTypes(leaveTypes.map(leave =>
-        leave.id === editingId ? {
-          ...leave,
-          name: form.name || 'Untitled Leave',
-          quota: form.days || 0,
-          description: form.description || 'No description provided.',
-          colorType: form.color || 'blue',
-          icon: getIconComponent(form.icon)
-        } : leave
-      ))
-    } else {
-      const newLeave = {
-        id: Date.now(),
-        name: form.name || 'Untitled Leave',
-        quota: form.days || 0,
-        description: form.description || 'No description provided.',
-        colorType: form.color || 'blue',
-        icon: getIconComponent(form.icon)
-      }
-      setLeaveTypes([...leaveTypes, newLeave])
+  const handleSubmit = async () => {
+    if (!form.name.trim()) return alert("Leave Name is required")
+    const payload = {
+      name: form.name,
+      default_days_per_year: parseInt(form.days) || 0,
+      description: form.description,
+      color_type: form.color,
+      icon_name: form.icon,
+      min_service_months: parseInt(form.service) || 0,
+      requires_attachment: form.reqAttachment
     }
 
+    try {
+      if (editingId) {
+        const res = await api.put(`/leave-types/${editingId}`, payload)
+        const updated = res.data.leaveType
+        setLeaveTypes(leaveTypes.map(leave =>
+          leave.id === editingId ? {
+            id: updated.id,
+            name: updated.name,
+            quota: updated.default_days_per_year,
+            description: updated.description || 'No description provided.',
+            colorType: updated.color_type || 'blue',
+            iconName: updated.icon_name || 'umbrella',
+            reqAttachment: !!updated.requires_attachment,
+            service: updated.min_service_months || 0
+          } : leave
+        ))
+      } else {
+        const res = await api.post('/leave-types', payload)
+        const created = res.data.leaveType
+        setLeaveTypes([...leaveTypes, {
+          id: created.id,
+          name: created.name,
+          quota: created.default_days_per_year,
+          description: created.description || 'No description provided.',
+          colorType: created.color_type || 'blue',
+          iconName: created.icon_name || 'umbrella',
+          reqAttachment: !!created.requires_attachment,
+          service: created.min_service_months || 0
+        }])
+      }
 
-    setIsCreating(false)
-    setEditingId(null)
-
-    // Reset form for next time
-    setForm({
-      name: '',
-      description: '',
-      days: '',
-      service: '',
-      icon: 'umbrella',
-      color: 'blue',
-      reqManager: true,
-      carryover: false,
-      reqAttachment: false
-    })
+      setIsCreating(false)
+      setEditingId(null)
+      setForm({
+        name: '', description: '', days: '', service: '', icon: 'umbrella', color: 'blue', reqManager: true, carryover: false, reqAttachment: false
+      })
+    } catch (err) {
+      alert(err.response?.data?.message || 'Action failed')
+    }
   }
 
   return (
@@ -245,57 +260,61 @@ export default function LeaveType({ onNavigate }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Existing Leave Types */}
-              {leaveTypes.map((leave) => {
-                const colors = colorStyles[leave.colorType] || colorStyles.blue
-                const Icon = leave.icon
-                return (
-                  <div key={leave.id} className={`rounded-[32px] p-6 flex flex-col ${colors.bg} shadow-sm min-h-[380px]`}>
-                    <div className="flex justify-between items-start mb-6">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colors.iconBg}`}>
-                        <Icon size={24} className={colors.iconColor} />
+            {loading ? (
+              <div className="flex justify-center py-20 text-[#64748b] font-bold">Loading leave types...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Existing Leave Types */}
+                {leaveTypes.map((leave) => {
+                  const colors = colorStyles[leave.colorType] || colorStyles.blue
+                  const Icon = getIconComponent(leave.iconName)
+                  return (
+                    <div key={leave.id} className={`rounded-[32px] p-6 flex flex-col ${colors.bg} shadow-sm min-h-[380px]`}>
+                      <div className="flex justify-between items-start mb-6">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colors.iconBg}`}>
+                          <Icon size={24} className={colors.iconColor} />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEdit(leave)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
+                            <Edit2 size={14} className={colors.iconColor} />
+                          </button>
+                          <button onClick={() => handleDelete(leave.id)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
+                            <Trash2 size={14} className={colors.iconColor} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleEdit(leave)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
-                          <Edit2 size={14} className={colors.iconColor} />
-                        </button>
-                        <button onClick={() => handleDelete(leave.id)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
-                          <Trash2 size={14} className={colors.iconColor} />
-                        </button>
+
+                      <h3 className={`text-[24px] font-fredoka font-bold mb-3 ${colors.title}`}>{leave.name}</h3>
+
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${colors.btnBg} text-[12px] font-bold ${colors.iconColor} w-fit mb-4`}>
+                        <Calendar size={14} /> {leave.quota} Days Annual Quota
+                      </div>
+
+                      <p className={`text-[13px] leading-relaxed mb-8 flex-grow ${colors.desc} font-medium`}>
+                        {leave.description}
+                      </p>
+
+                      <div className={`pt-4 border-t ${colors.footer} flex justify-between items-center cursor-pointer group`}>
+                        <span className={`text-[12px] font-bold tracking-widest uppercase ${colors.footerText}`}>Active Policy</span>
+                        <span className={`text-[16px] ${colors.footerText} group-hover:translate-x-1 transition-transform`}>›</span>
                       </div>
                     </div>
+                  )
+                })}
 
-                    <h3 className={`text-[24px] font-fredoka font-bold mb-3 ${colors.title}`}>{leave.name}</h3>
-
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${colors.btnBg} text-[12px] font-bold ${colors.iconColor} w-fit mb-4`}>
-                      <Calendar size={14} /> {leave.quota} Days Annual Quota
-                    </div>
-
-                    <p className={`text-[13px] leading-relaxed mb-8 flex-grow ${colors.desc} font-medium`}>
-                      {leave.description}
-                    </p>
-
-                    <div className={`pt-4 border-t ${colors.footer} flex justify-between items-center cursor-pointer group`}>
-                      <span className={`text-[12px] font-bold tracking-widest uppercase ${colors.footerText}`}>Active Policy</span>
-                      <span className={`text-[16px] ${colors.footerText} group-hover:translate-x-1 transition-transform`}>›</span>
-                    </div>
+                {/* Add New Card */}
+                <div
+                  onClick={() => setIsCreating(true)}
+                  className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white hover:border-[#a0xbsd1] transition-all group"
+                >
+                  <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Plus size={24} className="text-[#64748b]" />
                   </div>
-                )
-              })}
-
-              {/* Add New Card */}
-              <div
-                onClick={() => setIsCreating(true)}
-                className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white hover:border-[#a0xbsd1] transition-all group"
-              >
-                <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Plus size={24} className="text-[#64748b]" />
+                  <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
+                  <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
                 </div>
-                <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
-                <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="bg-white rounded-[40px] p-10 max-w-[850px] mx-auto shadow-sm">
@@ -448,7 +467,7 @@ export default function LeaveType({ onNavigate }) {
                     name: '', description: '', days: '', service: '', icon: 'umbrella', color: 'blue', reqManager: true, carryover: false, reqAttachment: false
                   })
                 }}
-                className="!bg-gray-800 text-white !px-8 !py-4 rounded-full font-bold hover:bg-blue-700 transition-colors"
+                className="!bg-gray-800 text-white !px-8 !py-4 rounded-full font-bold hover:bg-gray-700 transition-colors"
                 style={{ fontSize: '18px' }}
               >
                 Cancel

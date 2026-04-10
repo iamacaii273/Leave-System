@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import Header from "../../components/Header"
-import { Umbrella, Thermometer, Users, ChevronLeft, ChevronRight, Upload, X, Send, CalendarDays, FileText } from "lucide-react"
+import { Umbrella, Thermometer, Users, Plane, Smile, HeartHandshake, PartyPopper, MoreHorizontal, ChevronLeft, ChevronRight, Upload, X, Send, CalendarDays, FileText } from "lucide-react"
 import api from "../../services/api"
 
 /* ──────────────────────── helpers ──────────────────────── */
@@ -96,11 +96,16 @@ function calcDuration(start, end, sH, sM, sAP, eH, eM, eAP, isAllDay) {
 
 export default function Request({ onNavigate }) {
   const [leaveBalances, setLeaveBalances] = useState([])
+  const [dbLeaveTypes, setDbLeaveTypes] = useState([])
 
   useEffect(() => {
-    api.get('/leave-balances/me')
-      .then(res => setLeaveBalances(res.data.balances || []))
-      .catch(console.error)
+    Promise.all([
+      api.get('/leave-balances/me'),
+      api.get('/leave-types')
+    ]).then(([balRes, typeRes]) => {
+      setLeaveBalances(balRes.data.balances || [])
+      setDbLeaveTypes(typeRes.data.leaveTypes || [])
+    }).catch(console.error)
   }, [])
 
   /* leave type */
@@ -186,19 +191,46 @@ export default function Request({ onNavigate }) {
   }
 
   /* ─── leave types ─── */
-  const leaveTypes = useMemo(() => {
-    const base = [
-      { matcher: "annual", label: "Annual Leave", desc: "Personal recharge", Icon: Umbrella, color: "#0172b1", bg: "#ffffff" },
-      { matcher: "sick", label: "Sick Leave", desc: "Rest & recovery", Icon: Thermometer, color: "#ea6518", bg: "#fff0dc" },
-      { matcher: "personal", label: "Personal", desc: "Family & errands", Icon: Users, color: "#da1c73", bg: "#fdeaf3" },
-    ]
-    return base.filter(type => 
-      leaveBalances.some(b => b.leave_type_name.toLowerCase().includes(type.matcher))
-    ).map(type => {
-      const dbInfo = leaveBalances.find(b => b.leave_type_name.toLowerCase().includes(type.matcher));
-      return { ...type, id: dbInfo.leave_type_id, label: dbInfo.leave_type_name }
-    });
-  }, [leaveBalances]);
+  const getIconComponent = (iconName) => {
+    switch (iconName) {
+      case 'umbrella': return Umbrella
+      case 'thermometer': return Thermometer
+      case 'user': return Users
+      case 'plane': return Plane
+      case 'smile': return Smile
+      case 'heart': return HeartHandshake
+      case 'party': return PartyPopper
+      case 'more': return MoreHorizontal
+      default: return Umbrella
+    }
+  }
+
+  const getColorConfig = (colorType) => {
+    switch (colorType) {
+      case 'blue': return { color: "#006dae", bg: "#d6efff" }
+      case 'orange': return { color: "#b86814", bg: "#ffe3c2" }
+      case 'pink': return { color: "#8c2d68", bg: "#ffd6ee" }
+      case 'green': return { color: "#0a5c3e", bg: "#d0f5e5" }
+      default: return { color: "#0172b1", bg: "#d6efff" }
+    }
+  }
+
+  const parsedLeaveTypes = useMemo(() => {
+    // We only show leave types that the user actually has a balance for
+    // (the backend /me endpoint auto-provisions eligible ones based on service months!)
+    return leaveBalances.map(bal => {
+      const dbType = dbLeaveTypes.find(t => t.id === bal.leave_type_id)
+      const colors = getColorConfig(dbType?.color_type)
+      return {
+        id: bal.leave_type_id,
+        label: bal.leave_type_name,
+        desc: dbType?.description || "Request time off for this category.",
+        Icon: getIconComponent(dbType?.icon_name),
+        color: colors.color,
+        bg: colors.bg
+      }
+    })
+  }, [leaveBalances, dbLeaveTypes])
 
   /* ─── calendar grid ─── */
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
@@ -305,7 +337,7 @@ export default function Request({ onNavigate }) {
               <CalendarDays size={16} /> Leave Types
             </h3>
             <div className="space-y-3">
-              {leaveTypes.map(({ id, label, desc, Icon, color, bg }) => (
+              {parsedLeaveTypes.map(({ id, label, desc, Icon, color, bg }) => (
                 <button
                   key={id}
                   onClick={() => setLeaveType(id)}
@@ -320,13 +352,9 @@ export default function Request({ onNavigate }) {
                     <Icon size={22} color={color} strokeWidth={2.2} />
                   </div>
                   <div>
-                    <p className="font-[800] text-[15px] mb-0.5"
+                    <p className="font-[800] text-[15px]"
                       style={{ color: leaveType === id ? "#2c3b4a" : "#2b3c4f" }}>
                       {label}
-                    </p>
-                    <p className="text-[12px] font-medium"
-                      style={{ color: leaveType === id ? "#5f7587" : "#6f7a83" }}>
-                      {desc}
                     </p>
                   </div>
                 </button>
