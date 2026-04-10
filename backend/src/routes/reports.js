@@ -140,13 +140,17 @@ router.get("/leave-summary", ...guard, async (req, res) => {
          lt.name AS leave_type_name,
          COUNT(lr.id) AS total_requests,
          SUM(CASE WHEN lr.status = 'approved' THEN 1 ELSE 0 END) AS approved_requests,
-         COALESCE(SUM(CASE WHEN lr.status = 'approved' THEN lr.total_days ELSE 0 END), 0) AS total_days_used
-       FROM leave_requests lr
-       JOIN leave_types lt ON lr.leave_type_id = lt.id
-       WHERE YEAR(lr.submitted_at) = ?
+         COALESCE(SUM(CASE WHEN lr.status = 'approved' THEN lr.total_days ELSE 0 END), 0) AS total_days_used,
+         (
+           SELECT COALESCE(SUM(total_days), 0)
+           FROM leave_balances lb
+           WHERE lb.leave_type_id = lt.id AND lb.year = ?
+         ) AS total_allocated_days
+       FROM leave_types lt
+       LEFT JOIN leave_requests lr ON lr.leave_type_id = lt.id AND YEAR(lr.submitted_at) = ? AND lr.status = 'approved'
        GROUP BY lt.id, lt.name
        ORDER BY lt.name ASC`,
-      [year]
+      [year, year]
     );
 
     res.json({ year, summary });
@@ -182,6 +186,63 @@ router.get("/monthly", ...guard, async (req, res) => {
     res.json({ year, monthly });
   } catch (err) {
     console.error("GET /reports/monthly error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+
+// GET /employee-balances - Get all active employees with their leave balances for the given year.
+router.get("/employee-balances", ...guard, async (req, res) => {
+  const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+
+  if (isNaN(year) || year < 1000 || year > 9999) {
+    return res.status(400).json({ message: "Invalid year parameter." });
+  }
+
+  try {
+    const [employees] = await pool.query(
+      `SELECT
+         u.id AS user_id,
+         u.full_name,
+         u.hire_date,
+         lb.leave_type_id,
+         lt.name AS leave_type_name,
+         lb.total_days,
+         lb.used_days
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       LEFT JOIN leave_balances lb ON u.id = lb.user_id AND lb.year = ?
+       LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
+       WHERE r.name = 'Employee'
+         AND u.deleted_at IS NULL
+         AND u.is_active = 1
+       ORDER BY u.full_name ASC`,
+      [year]
+    );
+
+    // Group by user
+    const usersMap = {};
+    for (const row of employees) {
+      if (!usersMap[row.user_id]) {
+        usersMap[row.user_id] = {
+          user_id: row.user_id,
+          full_name: row.full_name,
+          hire_date: row.hire_date,
+          balances: []
+        };
+      }
+      if (row.leave_type_id) {
+        usersMap[row.user_id].balances.push({
+          leave_type_id: row.leave_type_id,
+          leave_type_name: row.leave_type_name,
+          total_days: row.total_days,
+          used_days: row.used_days
+        });
+      }
+    }
+
+    res.json({ year, employees: Object.values(usersMap) });
+  } catch (err) {
+    console.error("GET /reports/employee-balances error:", err);
     res.status(500).json({ message: "Internal server error." });
   }
 });

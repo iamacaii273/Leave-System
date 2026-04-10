@@ -1,7 +1,72 @@
 import { Umbrella, Thermometer, Users, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
+import api from "../../services/api"
+
+// Utilities
+function getInitials(name = "") {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("")
+}
+
+function formatDateShort(dateString) {
+  if (!dateString) return "-"
+  return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function isSameDayStr(startDate, endDate) {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  return start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth() && start.getDate() === end.getDate()
+}
+
+function formatDurationText(totalDays) {
+  const totalHours = Number(totalDays || 0) * 8
+  const days = Math.floor(totalHours / 8)
+  const remainder = totalHours - (days * 8)
+  const hours = Math.floor(remainder)
+  const minutes = Math.round((remainder - hours) * 60)
+  const parts = []
+
+  if (days > 0) parts.push(`${days}d`)
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+
+  return parts.join(" ") || "0h"
+}
+
+const PASTEL_COLORS = [
+  "#dbeafe", "#fef08a", "#fecdd3", "#e2e8f0", "#bfeadd",
+  "#c4b5fd", "#e0f2fe", "#fed7aa", "#bae6fd", "#fbcfe8", "#a7f3d0"
+]
+function getUserColor(userId) {
+  if (!userId) return "#eef2f9"
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash)
+  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
+}
+
+function getRequestIconData(typeName = "") {
+  const normalized = typeName.toLowerCase()
+  if (normalized.includes("sick")) return { Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" }
+  if (normalized.includes("personal")) return { Icon: Users, color: "#d06ab0", bg: "#f8e0f0" }
+  return { Icon: Umbrella, color: "#1982c4", bg: "#e6f2fb" }
+}
+
+function getRequestTheme(status = "") {
+  const normalized = status.toLowerCase()
+  if (normalized === "approved") return { bg: "#0cf1aa", text: "#185b48" }
+  if (normalized === "rejected") return { bg: "#f56464", text: "#570008" }
+  if (normalized === "acknowledged") return { bg: "#93c5fd", text: "#1e3a8a" }
+  if (normalized === "cancelled") return { bg: "#e2e8f0", text: "#475569" }
+  return { bg: "#fee481", text: "#6b5413" } // generic/pending
+}
+
+function formatDays(value) {
+  const numeric = Number(value || 0)
+  const oneDecimal = numeric.toFixed(1)
+  return oneDecimal.endsWith(".0") ? String(Math.trunc(numeric)) : oneDecimal
+}
 
 export default function Reports({ onNavigate }) {
   const navigate = useNavigate()
@@ -17,6 +82,11 @@ export default function Reports({ onNavigate }) {
   const balancesPerPage = 4
   const pickerRef = useRef(null)
 
+  const [isLoading, setIsLoading] = useState(true)
+  const [summaryData, setSummaryData] = useState([])
+  const [balancesData, setBalancesData] = useState([])
+  const [historyData, setHistoryData] = useState([])
+
   // Close picker when clicking outside
   useEffect(() => {
     function handleClick(e) {
@@ -28,7 +98,73 @@ export default function Reports({ onNavigate }) {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [showDatePicker])
 
-  const tabFilters = ["All", "Approved", "Pending", "Rejected"]
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [sumRes, balRes, histRes] = await Promise.all([
+          api.get("/reports/leave-summary"),
+          api.get("/reports/employee-balances"),
+          api.get("/leave-requests") // HR gets all requests
+        ]);
+
+        const loadedSummary = sumRes.data.summary.map(s => ({
+          type: s.leave_type_name,
+          used: parseFloat(s.total_days_used) || 0,
+          total: parseFloat(s.total_allocated_days) || 0
+        }));
+
+        const loadedBalances = {};
+        for (const emp of balRes.data.employees) {
+          const b = { sick: null, personal: null, annual: null };
+          for (const bal of emp.balances) {
+            const ltn = bal.leave_type_name.toLowerCase();
+            const usedStr = formatDays(bal.used_days);
+            const totalStr = formatDays(bal.total_days);
+            if (ltn.includes("sick")) b.sick = `${usedStr} / ${totalStr}`;
+            else if (ltn.includes("personal")) b.personal = `${usedStr} / ${totalStr}`;
+            else if (ltn.includes("annual") || ltn.includes("vacation")) b.annual = `${usedStr} / ${totalStr}`;
+          }
+          loadedBalances[emp.user_id] = {
+            id: emp.user_id,
+            name: emp.full_name,
+            initial: getInitials(emp.full_name),
+            bg: getUserColor(emp.user_id),
+            // Example derived specialBadge calculation
+            specialBadge: false ? "NEW HIRE" : null,
+            sick: b.sick || "0 / 0",
+            personal: b.personal || "0 / 0",
+            annual: b.annual || "0 / 0"
+          };
+        }
+
+        const loadedHistory = histRes.data.leaveRequests.map(r => ({
+          id: r.id,
+          name: r.full_name,
+          initial: getInitials(r.full_name),
+          bg: getUserColor(r.user_id),
+          type: r.leave_type_name,
+          start: new Date(r.start_date),
+          end: new Date(r.end_date),
+          submitted: new Date(r.submitted_at),
+          duration: formatDurationText(r.total_days),
+          status: r.status,
+          approver: r.approved_by_name || "-"
+        }));
+
+        setSummaryData(loadedSummary);
+        setBalancesData(Object.values(loadedBalances));
+        setHistoryData(loadedHistory);
+      } catch (err) {
+        console.error("Failed to load reports data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const tabFilters = ["All", "Approved", "Pending", "Rejected", "Acknowledged", "Cancelled"]
 
   const adminNavItems = [
     { id: "dashboard", label: "Dashboard" },
@@ -42,67 +178,16 @@ export default function Reports({ onNavigate }) {
     role: "Global HR Manager"
   }
 
-  // Card 1: Summary Data
-  const leaveSummary = [
-    { type: "Sick Leave", used: 11, total: 30 },
-    { type: "Personal Leave", used: 3, total: 10 },
-    { type: "Annual Vacation", used: 7, total: 10 }
-  ]
-
-  // Card 2: Balances Data
-  const balances = [
-    { name: "Jane Doe", initial: "JD", bg: "#dbeafe", sick: "3 / 30", personal: "1 / 3", annual: "0 / 6", specialBadge: null },
-    { name: "Somsak Meesuk", initial: "SM", bg: "#fef08a", sick: "5 / 30", personal: "3 / 3", annual: "2 / 6", specialBadge: null },
-    { name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", sick: "1 / 30", personal: "0 / 3", annual: "0 / 0", specialBadge: "NEW HIRE (< 12MO)" },
-    { name: "Bob Peterson", initial: "BP", bg: "#e2e8f0", sick: "2 / 30", personal: "2 / 3", annual: "5 / 6", specialBadge: null },
-    { name: "Marcus Chen", initial: "MC", bg: "#bfeadd", sick: "4 / 30", personal: "2 / 3", annual: "3 / 6", specialBadge: null },
-    { name: "Elena Rodriguez", initial: "ER", bg: "#c4b5fd", sick: "0 / 30", personal: "1 / 3", annual: "1 / 6", specialBadge: null },
-    { name: "James Wilson", initial: "JW", bg: "#e0f2fe", sick: "7 / 30", personal: "3 / 3", annual: "4 / 6", specialBadge: null },
-    { name: "Sarah Connor", initial: "SC", bg: "#fef08a", sick: "2 / 30", personal: "0 / 3", annual: "2 / 6", specialBadge: null },
-    { name: "Amanda Smith", initial: "AS", bg: "#fed7aa", sick: "6 / 30", personal: "1 / 3", annual: "5 / 6", specialBadge: null },
-    { name: "David Kim", initial: "DK", bg: "#bae6fd", sick: "1 / 30", personal: "0 / 3", annual: "0 / 6", specialBadge: "NEW HIRE (< 12MO)" },
-    { name: "Lisa Park", initial: "LP", bg: "#fbcfe8", sick: "3 / 30", personal: "2 / 3", annual: "1 / 6", specialBadge: null },
-    { name: "Tom Hardy", initial: "TH", bg: "#a7f3d0", sick: "8 / 30", personal: "1 / 3", annual: "6 / 6", specialBadge: null },
-  ]
-
   // Balances pagination
-  const balTotalPages = Math.ceil(balances.length / balancesPerPage) || 1
-  const paginatedBalances = balances.slice((balancesPage - 1) * balancesPerPage, balancesPage * balancesPerPage)
-  const balStartItem = balances.length === 0 ? 0 : (balancesPage - 1) * balancesPerPage + 1
-  const balEndItem = Math.min(balancesPage * balancesPerPage, balances.length)
+  const balTotalPages = Math.ceil(balancesData.length / balancesPerPage) || 1
+  const paginatedBalances = balancesData.slice((balancesPage - 1) * balancesPerPage, balancesPage * balancesPerPage)
+  const balStartItem = balancesData.length === 0 ? 0 : (balancesPage - 1) * balancesPerPage + 1
+  const balEndItem = Math.min(balancesPage * balancesPerPage, balancesData.length)
 
-  // Card 3: History Data
-  const iconData = {
-    annual: { Icon: Umbrella, color: "#1982c4", bg: "#e6f2fb" },
-    sick: { Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" },
-    personal: { Icon: Users, color: "#d06ab0", bg: "#f8e0f0" }
-  }
-
-  const statusStyles = {
-    APPROVED: { bg: "#bbf7d0", text: "#166534" },
-    PENDING: { bg: "#ffedd5", text: "#9a3412" },
-    REJECTED: { bg: "#fecdd3", text: "#9f1239" },
-    CANCELLED: { bg: "#e2e8f0", text: "#475569" }
-  }
-
-  const history = [
-    { id: 1, name: "Jane Doe", initial: "JD", bg: "#dbeafe", type: "Annual Leave", icon: "annual", dates: "Aug 14 - Aug 21, 2024", start: new Date(2024, 7, 14), end: new Date(2024, 7, 21), submitted: "Jul 02", duration: "5 Days", status: "Approved", approver: "Boss", dot: true },
-    { id: 2, name: "Somsak Meesuk", initial: "SM", bg: "#fef08a", type: "Personal Leave", icon: "personal", dates: "Oct 05 - Oct 06, 2024", start: new Date(2024, 9, 5), end: new Date(2024, 9, 6), submitted: "2h ago", duration: "2 Days", status: "Pending", approver: "-", dot: true },
-    { id: 3, name: "Bob Peterson", initial: "BP", bg: "#e2e8f0", type: "Sick Leave", icon: "sick", dates: "May 12, 2024", start: new Date(2024, 4, 12), end: new Date(2024, 4, 12), submitted: "May 10", duration: "4 Hr", status: "Rejected", approver: "Boss", dot: true },
-    { id: 4, name: "Kanya Kittisun", initial: "KK", bg: "#fecdd3", type: "Annual Leave", icon: "annual", dates: "Mar 20 - Mar 25, 2024", start: new Date(2024, 2, 20), end: new Date(2024, 2, 25), submitted: "Feb 15", duration: "5 Days", status: "CANCELLED", approver: "-", dot: false },
-    { id: 5, name: "Marcus Chen", initial: "MC", bg: "#bfeadd", type: "Sick Leave", icon: "sick", dates: "Jun 10 - Jun 11, 2024", start: new Date(2024, 5, 10), end: new Date(2024, 5, 11), submitted: "Jun 08", duration: "2 Days", status: "Approved", approver: "Boss", dot: true },
-    { id: 6, name: "Elena Rodriguez", initial: "ER", bg: "#c4b5fd", type: "Annual Leave", icon: "annual", dates: "Jul 01 - Jul 05, 2024", start: new Date(2024, 6, 1), end: new Date(2024, 6, 5), submitted: "Jun 20", duration: "5 Days", status: "Approved", approver: "Boss", dot: true },
-    { id: 7, name: "James Wilson", initial: "JW", bg: "#e0f2fe", type: "Personal Leave", icon: "personal", dates: "Sep 15, 2024", start: new Date(2024, 8, 15), end: new Date(2024, 8, 15), submitted: "Sep 12", duration: "1 Day", status: "Approved", approver: "HR", dot: true },
-    { id: 8, name: "Sarah Connor", initial: "SC", bg: "#fef08a", type: "Sick Leave", icon: "sick", dates: "Nov 20 - Nov 22, 2024", start: new Date(2024, 10, 20), end: new Date(2024, 10, 22), submitted: "Nov 19", duration: "3 Days", status: "Pending", approver: "-", dot: true },
-    { id: 9, name: "Amanda Smith", initial: "AS", bg: "#fed7aa", type: "Annual Leave", icon: "annual", dates: "Dec 23 - Dec 31, 2024", start: new Date(2024, 11, 23), end: new Date(2024, 11, 31), submitted: "Nov 01", duration: "7 Days", status: "Approved", approver: "Boss", dot: true },
-    { id: 10, name: "David Kim", initial: "DK", bg: "#bae6fd", type: "Personal Leave", icon: "personal", dates: "Apr 08, 2024", start: new Date(2024, 3, 8), end: new Date(2024, 3, 8), submitted: "Apr 05", duration: "4 Hr", status: "Rejected", approver: "HR", dot: true },
-    { id: 11, name: "Lisa Park", initial: "LP", bg: "#fbcfe8", type: "Sick Leave", icon: "sick", dates: "Feb 14 - Feb 16, 2024", start: new Date(2024, 1, 14), end: new Date(2024, 1, 16), submitted: "Feb 13", duration: "3 Days", status: "Approved", approver: "Boss", dot: true },
-    { id: 12, name: "Tom Hardy", initial: "TH", bg: "#a7f3d0", type: "Annual Leave", icon: "annual", dates: "Jan 02 - Jan 06, 2024", start: new Date(2024, 0, 2), end: new Date(2024, 0, 6), submitted: "Dec 20", duration: "5 Days", status: "Approved", approver: "HR", dot: true },
-  ]
-
+  // Filter History Data
   let filteredData = filter === "all"
-    ? history
-    : history.filter(item => item.status.toLowerCase() === filter)
+    ? historyData
+    : historyData.filter(item => item.status.toLowerCase() === filter)
 
   if (appliedRange) {
     const { from, to } = appliedRange
@@ -168,11 +253,14 @@ export default function Reports({ onNavigate }) {
           <h3 className="font-bold text-[18px] font-fredoka text-[#1f3747] mb-8">Leave Summary by Type</h3>
 
           <div className="space-y-6">
-            {leaveSummary.map((item, idx) => (
+            {summaryData.length === 0 && !isLoading && (
+              <p className="text-[#64748b] text-[14px]">No leave summary data available.</p>
+            )}
+            {summaryData.map((item, idx) => (
               <div key={idx} className="flex flex-col gap-2">
                 <div className="flex justify-between items-center text-[13px] font-bold text-[#3f4a51]">
                   <span>{item.type}</span>
-                  <span>{item.used} Days Used</span>
+                  <span>{formatDays(item.used)} / {formatDays(item.total)} Days Allocated</span>
                 </div>
                 <div
                   className="w-full rounded-full overflow-hidden"
@@ -181,7 +269,7 @@ export default function Reports({ onNavigate }) {
                   <div
                     className="rounded-full transition-all duration-500 ease-out"
                     style={{
-                      width: `${(item.used / item.total) * 100}%`,
+                      width: `${item.total > 0 ? Math.min((item.used / item.total) * 100, 100) : 0}%`,
                       backgroundColor: "#ff8a7a",
                       height: "14px"
                     }}
@@ -258,7 +346,7 @@ export default function Reports({ onNavigate }) {
 
           <div className="flex items-center justify-between pt-4 mt-2 px-8 pb-4">
             <p className="text-[13px] text-[#94a3b8] font-bold">
-              Showing {balStartItem}-{balEndItem} of {balances.length} employees
+              Showing {balStartItem}-{balEndItem} of {balancesData.length} employees
             </p>
             <div className="flex items-center gap-2 text-[#475569] font-bold text-[13px]">
               <button
@@ -389,15 +477,16 @@ export default function Reports({ onNavigate }) {
                   </tr>
                 ) :
                   paginatedData.map((hist) => {
-                    const { Icon, color, bg } = iconData[hist.icon];
+                    const iconInfo = getRequestIconData(hist.type);
+                    const Icon = iconInfo.Icon;
+                    const statusTheme = getRequestTheme(hist.status);
 
-                    const statusTheme = {
-                      Approved: { bg: "#00e676", text: "#1f3747", dot: "#1f3747" },
-                      Pending: { bg: "#fce87c", text: "#1f3747", dot: "#1f3747" },
-                      Rejected: { bg: "#ff7669", text: "#1f3747", dot: "#1f3747" },
-                      CANCELLED: { bg: "#e2e8f0", text: "#64748b", dot: null }
+                    let dateRangeStr = "";
+                    if (isSameDayStr(hist.start, hist.end)) {
+                      dateRangeStr = formatDateShort(hist.start);
+                    } else {
+                      dateRangeStr = `${formatDateShort(hist.start)} - ${formatDateShort(hist.end)}`;
                     }
-                    const theme = statusTheme[hist.status] || statusTheme.Pending;
 
                     return (
                       <tr key={hist.id} className="hover:bg-[#f9fafb] transition-colors rounded-[24px]">
@@ -411,16 +500,16 @@ export default function Reports({ onNavigate }) {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
-                              <Icon color={color} size={16} strokeWidth={2.5} />
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: iconInfo.bg }}>
+                              <Icon color={iconInfo.color} size={16} strokeWidth={2.5} />
                             </div>
                             <span className="text-[14px] font-bold text-[#323940]">{hist.type}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col justify-center">
-                            <span className="text-[13px] font-bold text-[#3f4a51]">{hist.dates}</span>
-                            <span className="text-[11px] font-medium text-[#94a3b8] mt-0.5">Submitted on {hist.submitted}</span>
+                            <span className="text-[13px] font-bold text-[#3f4a51]">{dateRangeStr}</span>
+                            <span className="text-[11px] font-medium text-[#94a3b8] mt-0.5">Submitted on {formatDateShort(hist.submitted)}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -429,13 +518,15 @@ export default function Reports({ onNavigate }) {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div
-                            className={`inline-flex items-center ${hist.dot ? 'gap-1.5' : ''} px-3 py-1.5 rounded-full`}
-                            style={{ backgroundColor: theme.bg }}
+                          <span
+                            className="px-4 py-1.5 rounded-full text-[11px] font-[800] tracking-wide uppercase whitespace-nowrap"
+                            style={{
+                              backgroundColor: statusTheme.bg,
+                              color: statusTheme.text
+                            }}
                           >
-                            {hist.dot && <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: theme.dot }}></div>}
-                            <span className="text-[10px] font-bold tracking-wide" style={{ color: theme.text }}>{hist.status}</span>
-                          </div>
+                            {hist.status}
+                          </span>
                         </td>
                         <td className="py-3 px-4 rounded-r-[24px] text-right text-[13px] font-medium text-[#64748b]">
                           {hist.approver}

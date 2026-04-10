@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { UserPlus, Briefcase, Lock, Save, ChevronDown, CheckCircle } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
@@ -19,43 +19,131 @@ export default function AddEmployee({ onNavigate }) {
   }
 
   const [form, setForm] = useState({
-    empId: '',
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
-    phone: '',
-    role: 'Employee',
-    position: '',
-    username: '',
+    countryCode: '+66',
+    phoneNumberOnly: '',
+    hire_date: '',
+    role_id: '',
+    position_id: '',
     password: '',
     confirmPassword: ''
   })
 
+  const [roles, setRoles] = useState([])
+  const [positions, setPositions] = useState([])
+  const [filteredPositions, setFilteredPositions] = useState([])
   const [showSuccess, setShowSuccess] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const headers = { 'Authorization': `Bearer ${token}` }
+        
+        const [rolesRes, posRes] = await Promise.all([
+          fetch('http://localhost:5000/api/metadata/roles', { headers }).then(r => r.json()),
+          fetch('http://localhost:5000/api/metadata/positions', { headers }).then(r => r.json())
+        ])
+        
+        const allowedRoles = (rolesRes.roles || []).filter(r => r.name === 'Employee' || r.name === 'Manager')
+        setRoles(allowedRoles)
+        setPositions(posRes.positions || [])
+        
+        if (allowedRoles.length > 0) {
+          updateField('role_id', allowedRoles[0].id)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchMetadata()
+  }, [])
+
+  useEffect(() => {
+    if (form.role_id) {
+      const filtered = positions.filter(p => p.role_id === form.role_id)
+      setFilteredPositions(filtered)
+      if (filtered.length > 0) {
+        if (!filtered.find(p => p.id === form.position_id)) {
+          updateField('position_id', filtered[0].id)
+        }
+      } else {
+        updateField('position_id', '')
+      }
+    }
+  }, [form.role_id, positions])
 
   const updateField = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  const expectedPhoneLength = {
+    '+1': 10,
+    '+44': 10,
+    '+66': 9,
+    '+91': 10,
+    '+61': 9
+  }[form.countryCode] || 10;
+
   const isFormValid =
-    form.empId.trim() &&
-    form.firstName.trim() &&
-    form.lastName.trim() &&
+    form.fullName.trim() &&
     form.email.trim() &&
-    form.phone.trim() &&
-    form.position.trim() &&
-    form.username.trim() &&
+    form.phoneNumberOnly.length === expectedPhoneLength &&
+    form.hire_date &&
+    form.role_id &&
+    form.position_id &&
     form.password.trim() &&
     form.confirmPassword.trim() &&
     form.password === form.confirmPassword
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isFormValid) return
-    setShowSuccess(true)
-    setTimeout(() => {
-      setShowSuccess(false)
-      navigate('/hr/employee')
-    }, 2000)
+    setError('')
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://localhost:5000/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: form.fullName,
+          email: form.email,
+          phone: `${form.countryCode}${form.phoneNumberOnly}`,
+          hire_date: form.hire_date,
+          password: form.password,
+          role_id: form.role_id,
+          position_id: form.position_id
+        })
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        setError(errorData.message || 'Failed to save')
+        return
+      }
+
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+        navigate('/hr/employee')
+      }, 2000)
+    } catch (err) {
+      console.error(err)
+      setError('An error occurred while saving.')
+    }
+  }
+
+  const handlePhoneChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '');
+    const stripped = val.startsWith('0') ? val.substring(1) : val;
+    if (stripped.length <= expectedPhoneLength) {
+      updateField('phoneNumberOnly', stripped);
+    }
   }
 
   const inputClass = "w-full bg-[#f4f7f9] rounded-2xl py-4 px-6 text-[15px] text-[#323940] placeholder-[#a6b6c5] border-none outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all"
@@ -95,18 +183,10 @@ export default function AddEmployee({ onNavigate }) {
                 </div>
                 <h3 className="font-bold text-[18px] font-fredoka text-[#323940]">Personal Identity</h3>
               </div>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Employee ID <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="e.g. EMP-2024-001" value={form.empId} onChange={(e) => updateField('empId', e.target.value)} className={inputClass} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">First Name <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="Enter first name" value={form.firstName} onChange={(e) => updateField('firstName', e.target.value)} className={inputClass} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Last Name <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="Enter last name" value={form.lastName} onChange={(e) => updateField('lastName', e.target.value)} className={inputClass} />
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Full Name <span className="text-red-400">*</span></label>
+                  <input type="text" placeholder="Enter full name" value={form.fullName} onChange={(e) => updateField('fullName', e.target.value)} className={inputClass} />
                 </div>
               </div>
             </section>
@@ -121,27 +201,47 @@ export default function AddEmployee({ onNavigate }) {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Email Address <span className="text-red-400">*</span></label>
-                  <input type="email" placeholder="name@company.com" value={form.email} onChange={(e) => updateField('email', e.target.value)} className={inputClass} />
-                </div>
-                <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-bold text-[#64748b] ml-1">Phone Number <span className="text-red-400">*</span></label>
-                  <input type="tel" placeholder="+1 (555) 000-0000" value={form.phone} onChange={(e) => updateField('phone', e.target.value)} className={inputClass} />
+                  <div className="flex gap-2">
+                    <div className="relative w-[35%]">
+                      <select value={form.countryCode} onChange={(e) => updateField('countryCode', e.target.value)} className={`${inputClass} !px-3 !pr-8 appearance-none cursor-pointer`}>
+                        <option value="+1">+1 (US)</option>
+                        <option value="+44">+44 (UK)</option>
+                        <option value="+66">+66 (TH)</option>
+                        <option value="+91">+91 (IN)</option>
+                        <option value="+61">+61 (AU)</option>
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
+                    </div>
+                    <input type="tel" placeholder="(555) 000-0000" value={form.phoneNumberOnly} onChange={handlePhoneChange} className={`${inputClass} w-[65%]`} />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Role</label>
+                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Hire Date <span className="text-red-400">*</span></label>
+                  <input type="date" value={form.hire_date} onChange={(e) => updateField('hire_date', e.target.value)} className={inputClass} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Role <span className="text-red-400">*</span></label>
                   <div className="relative">
-                    <select value={form.role} onChange={(e) => updateField('role', e.target.value)} className={`${inputClass} appearance-none cursor-pointer`}>
-                      <option>Employee</option>
-                      <option>Admin</option>
-                      <option>HR</option>
+                    <select value={form.role_id} onChange={(e) => updateField('role_id', e.target.value)} className={`${inputClass} appearance-none cursor-pointer`}>
+                      {roles.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
                     </select>
                     <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-bold text-[#64748b] ml-1">Position <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="e.g. Senior Developer" value={form.position} onChange={(e) => updateField('position', e.target.value)} className={inputClass} />
+                  <div className="relative">
+                    <select value={form.position_id} onChange={(e) => updateField('position_id', e.target.value)} className={`${inputClass} appearance-none cursor-pointer`}>
+                      {filteredPositions.length === 0 && <option value="">No positions found</option>}
+                      {filteredPositions.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
+                  </div>
                 </div>
               </div>
             </section>
@@ -156,8 +256,8 @@ export default function AddEmployee({ onNavigate }) {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Username <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="Choose a unique username" value={form.username} onChange={(e) => updateField('username', e.target.value)} className={credInputClass} />
+                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Email Address (Login ID) <span className="text-red-400">*</span></label>
+                  <input type="email" placeholder="name@company.com" value={form.email} onChange={(e) => updateField('email', e.target.value)} className={credInputClass} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-bold text-[#64748b] ml-1">Password <span className="text-red-400">*</span></label>
@@ -175,6 +275,12 @@ export default function AddEmployee({ onNavigate }) {
 
             <div className="w-full h-px bg-gray-100 my-2"></div>
 
+            {error && (
+              <div className="bg-red-50 text-red-500 p-4 rounded-xl text-[14px] font-bold text-center">
+                {error}
+              </div>
+            )}
+            
             {/* Actions */}
             <div className="flex items-center justify-end gap-6 mb-2">
               <button
