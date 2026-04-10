@@ -309,7 +309,7 @@ export default function EditUser({ onNavigate }) {
                     <select
                       value={form.phonePrefix}
                       onChange={(e) => setForm(p => ({ ...p, phonePrefix: e.target.value, phone: '' }))}
-                      className="bg-[#f4f7f9] rounded-full py-3 pl-4 pr-8 !text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
+                      className="bg-[#f4f7f9] rounded-full py-3 pl-4 pr-8 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                     >
                       {PHONE_PREFIXES.map(pf => (
                         <option key={pf.code} value={pf.code}>{pf.label}</option>
