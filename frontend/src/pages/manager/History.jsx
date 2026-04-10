@@ -134,7 +134,8 @@ export default function History({ onNavigate }) {
       api.get("/leave-requests/team?status=approved").catch(() => ({ data: { leaveRequests: [] } })),
       api.get("/leave-requests/team?status=rejected").catch(() => ({ data: { leaveRequests: [] } })),
       api.get("/leave-requests/team").catch(() => ({ data: { leaveRequests: [] } })),
-    ]).then(([appRes, rejRes, allRes]) => {
+      api.get("/users").catch(() => ({ data: { users: [] } })),
+    ]).then(([appRes, rejRes, allRes, usersRes]) => {
       // History list = approved + rejected, sorted newest first
       const hist = [
         ...(appRes.data.leaveRequests || []),
@@ -142,7 +143,7 @@ export default function History({ onNavigate }) {
       ].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
       setRequests(hist)
 
-      // Active today = unique employees with NO active leave today
+      // Active today = total team members minus those on leave today
       const allReqs = allRes.data.leaveRequests || []
       const today   = new Date(); today.setHours(0,0,0,0)
       const outIds  = new Set()
@@ -152,9 +153,10 @@ export default function History({ onNavigate }) {
         const e = new Date(r.end_date);   e.setHours(23,59,59,999)
         if (today >= s && today <= e) outIds.add(r.user_id)
       })
-      // Unique total employees
-      const allIds = new Set(allReqs.map(r => r.user_id))
-      setActiveToday(allIds.size - outIds.size)
+      // Use real user count from /users (Employee role only), fall back to unique request IDs
+      const teamUsers = (usersRes.data.users || []).filter(u => u.role === 'Employee')
+      const totalMembers = teamUsers.length > 0 ? teamUsers.length : new Set(allReqs.map(r => r.user_id)).size
+      setActiveToday(Math.max(0, totalMembers - outIds.size))
     }).finally(() => setLoading(false))
   }, [])
 

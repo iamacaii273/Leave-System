@@ -48,7 +48,10 @@ export default function Header({
             <Bell size={20} className="text-gray-500" />
             <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full"></span>
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <button 
+            onClick={() => onNavigate && onNavigate("settings")}
+            className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
+          >
             <Settings size={20} className="text-gray-500" />
           </button>
           <div className="relative">

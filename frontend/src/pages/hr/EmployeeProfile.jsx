@@ -12,7 +12,8 @@ import {
   Folder,
   X,
   Check,
-  Shield
+  Shield,
+  Phone
 } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import Header from "../../components/Header"
@@ -313,20 +314,22 @@ export default function EmployeeProfile({ onNavigate }) {
                 </div>
                 <div className="flex flex-col justify-center pt-2">
                   <div className="flex items-center gap-4 mb-4">
-                    <h1 className="text-[44px] font-fredoka font-bold text-[#323940] m-0 leading-none">{displayedName}</h1>
+                    <h1 className="text-[44px] font-fredoka font-bold text-[#323940] m-0 leading-none">
+                      {displayedName}
+                    </h1>
                     <span className={`${headerStatusClass} px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-widest self-start mt-1`}>
                       {employee.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 text-[#64748b] font-medium text-[15px]">
-                      <Briefcase size={18} /> {employee.position || "-"} / {employee.role}
+                      <Briefcase size={18} /> {employee.position}
                     </div>
                     <div className="flex items-center gap-3 text-[#64748b] font-medium text-[15px]">
-                      <CalendarIcon size={18} /> Start Date: {formatDate(employee.hire_date)}
+                      <CalendarIcon size={18} /> Hire Date: {formatDate(employee.hire_date)}
                     </div>
                     <div className="flex items-center gap-3 text-[#64748b] font-medium text-[15px]">
-                      <Shield size={18} /> Username: {employee.username}
+                      <Shield size={18} /> Role: {employee.role}
                     </div>
                   </div>
                 </div>
@@ -487,11 +490,11 @@ export default function EmployeeProfile({ onNavigate }) {
 
                     <div className="flex items-center gap-5">
                       <div className="w-12 h-12 rounded-full bg-[#eef2f9] flex items-center justify-center text-[#4d6b63]">
-                        <Shield size={20} />
+                        <Phone size={20} />
                       </div>
                       <div>
-                        <p className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase mb-1">Role</p>
-                        <p className="font-bold text-[15px] text-[#323940]">{employee.role}</p>
+                        <p className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase mb-1">Contact Number</p>
+                        <p className="font-bold text-[15px] text-[#323940]">{employee.phone || "-"}</p>
                       </div>
                     </div>
                   </div>
@@ -499,18 +502,33 @@ export default function EmployeeProfile({ onNavigate }) {
 
                 <div className="bg-white rounded-[32px] p-8 shadow-sm">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-[19px] font-fredoka text-[#323940] tracking-wide">Employee Summary</h3>
-                    <span className="bg-[#ccfae8] text-[#24805e] px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase">Live</span>
+                    <h3 className="font-bold text-[19px] font-fredoka text-[#323940] tracking-wide">Leave Activity Overview</h3>
+                    <span className="bg-[#f0f3f8] text-[#64748b] px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase">All Time</span>
                   </div>
 
-                  <div>
-                    <p className="text-[#323940] text-[18px] font-bold mb-1">
-                      {employee.position || "-"}
-                    </p>
-                    <p className="text-[#64748b] text-[15px] font-medium leading-relaxed">
-                      Username: {employee.username}<br />
-                      Hire Date: {formatDate(employee.hire_date)}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[#f8fafc] p-4 rounded-[20px] flex flex-col justify-center">
+                      <p className="text-[11px] font-bold text-[#94a3b8] uppercase tracking-widest mb-1">Total</p>
+                      <p className="text-[28px] font-fredoka font-bold text-[#3f4a51] leading-none">{requests.length}</p>
+                    </div>
+                    <div className="bg-[#f0fdf4] p-4 rounded-[20px] flex flex-col justify-center">
+                      <p className="text-[11px] font-bold text-[#4ade80] uppercase tracking-widest mb-1">Approved</p>
+                      <p className="text-[28px] font-fredoka font-bold text-[#16a34a] leading-none">
+                        {requests.filter(r => r.status.toLowerCase() === 'approved').length}
+                      </p>
+                    </div>
+                    <div className="bg-[#fef2f2] p-4 rounded-[20px] flex flex-col justify-center">
+                      <p className="text-[11px] font-bold text-[#f87171] uppercase tracking-widest mb-1">Rejected</p>
+                      <p className="text-[28px] font-fredoka font-bold text-[#dc2626] leading-none">
+                        {requests.filter(r => r.status.toLowerCase() === 'rejected').length}
+                      </p>
+                    </div>
+                    <div className="bg-[#eff6ff] p-4 rounded-[20px] flex flex-col justify-center">
+                      <p className="text-[11px] font-bold text-[#60a5fa] uppercase tracking-widest mb-1">Pending</p>
+                      <p className="text-[28px] font-fredoka font-bold text-[#2563eb] leading-none">
+                        {requests.filter(r => ['pending', 'acknowledged'].includes(r.status.toLowerCase())).length}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

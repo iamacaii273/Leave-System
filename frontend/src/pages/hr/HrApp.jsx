@@ -6,6 +6,8 @@ import EmployeeProfile from './EmployeeProfile'
 import AddEmployee from './AddEmployee'
 import Reports from './Reports'
 import LeaveType from './LeaveType'
+import Settings from '../shared/Settings'
+import Header from '../../components/Header'
 
 export default function HrApp() {
   const navigate = useNavigate()
@@ -22,6 +24,7 @@ export default function HrApp() {
       <Route path="employee/:id" element={<EmployeeProfile onNavigate={handleNavigate} />} />
       <Route path="reports" element={<Reports onNavigate={handleNavigate} />} />
       <Route path="leave-type" element={<LeaveType onNavigate={handleNavigate} />} />
+      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} />} />
       <Route path="/" element={<Navigate to="dashboard" replace />} />
     </Routes>
   )

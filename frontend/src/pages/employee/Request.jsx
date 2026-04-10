@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Header from "../../components/Header"
 import { Umbrella, Thermometer, Users, ChevronLeft, ChevronRight, Upload, X, Send, CalendarDays, FileText } from "lucide-react"
 import api from "../../services/api"
@@ -97,6 +97,12 @@ function calcDuration(start, end, sH, sM, sAP, eH, eM, eAP, isAllDay) {
 export default function Request({ onNavigate }) {
   const [leaveBalances, setLeaveBalances] = useState([])
 
+  useEffect(() => {
+    api.get('/leave-balances/me')
+      .then(res => setLeaveBalances(res.data.balances || []))
+      .catch(console.error)
+  }, [])
+
   /* leave type */
   const [leaveType, setLeaveType] = useState("")
 
@@ -160,12 +166,8 @@ export default function Request({ onNavigate }) {
       finalEnd = `${eDateBase}T${to24(endHour, endAmPm)}:${endMin}:00`;
     }
 
-    let leaveTypeId = "lt000001-0000-0000-0000-000000000003"; // annual
-    if (leaveType === "sick") leaveTypeId = "lt000001-0000-0000-0000-000000000001";
-    if (leaveType === "personal") leaveTypeId = "lt000001-0000-0000-0000-000000000002";
-
     const formData = new FormData();
-    formData.append('leave_type_id', leaveTypeId);
+    formData.append('leave_type_id', leaveType);
     formData.append('start_date', finalStart);
     formData.append('end_date', finalEnd);
     formData.append('total_days', String(duration.totalHours / 8));
@@ -184,11 +186,19 @@ export default function Request({ onNavigate }) {
   }
 
   /* ─── leave types ─── */
-  const leaveTypes = [
-    { id: "annual", label: "Annual Leave", desc: "Personal recharge", Icon: Umbrella, color: "#0172b1", bg: "#ffffff" },
-    { id: "sick", label: "Sick Leave", desc: "Rest & recovery", Icon: Thermometer, color: "#ea6518", bg: "#fff0dc" },
-    { id: "personal", label: "Personal", desc: "Family & errands", Icon: Users, color: "#da1c73", bg: "#fdeaf3" },
-  ]
+  const leaveTypes = useMemo(() => {
+    const base = [
+      { matcher: "annual", label: "Annual Leave", desc: "Personal recharge", Icon: Umbrella, color: "#0172b1", bg: "#ffffff" },
+      { matcher: "sick", label: "Sick Leave", desc: "Rest & recovery", Icon: Thermometer, color: "#ea6518", bg: "#fff0dc" },
+      { matcher: "personal", label: "Personal", desc: "Family & errands", Icon: Users, color: "#da1c73", bg: "#fdeaf3" },
+    ]
+    return base.filter(type => 
+      leaveBalances.some(b => b.leave_type_name.toLowerCase().includes(type.matcher))
+    ).map(type => {
+      const dbInfo = leaveBalances.find(b => b.leave_type_name.toLowerCase().includes(type.matcher));
+      return { ...type, id: dbInfo.leave_type_id, label: dbInfo.leave_type_name }
+    });
+  }, [leaveBalances]);
 
   /* ─── calendar grid ─── */
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)

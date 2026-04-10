@@ -1,8 +1,17 @@
-import { Bell, Settings, User } from "lucide-react"
+import { Bell, Settings, User, LogOut } from "lucide-react"
 import { useAuth } from "../../contexts/AuthContext"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 export default function ManagerHeader({ activePage = "dashboard", onNavigate }) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const [showDropdown, setShowDropdown] = useState(false)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
@@ -38,21 +47,40 @@ export default function ManagerHeader({ activePage = "dashboard", onNavigate }) 
             <Bell size={20} className="text-gray-500" />
             <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <button 
+            onClick={() => onNavigate && onNavigate("settings")}
+            className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
+          >
             <Settings size={20} className="text-gray-500" />
           </button>
-          <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
-            <div className="text-right">
-              <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">
-                {user?.full_name || "Manager"}
-              </p>
-              <p className="text-[11px] text-[#64748b] capitalize">
-                {user?.role || "Manager"}
-              </p>
-            </div>
-            <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
-              <User size={20} className="text-sky-600" />
-            </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="flex items-center gap-3 pl-6 border-l border-gray-200 focus:outline-none"
+            >
+              <div className="text-right">
+                <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">
+                  {user?.full_name || "Manager"}
+                </p>
+                <p className="text-[11px] text-[#64748b] capitalize">
+                  {user?.role || "Manager"}
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
+                <User size={20} className="text-sky-600" />
+              </div>
+            </button>
+            {showDropdown && (
+              <div className="absolute right-0 mt-3 w-48 bg-white border border-gray-100 shadow-lg rounded-xl py-2 z-50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-[14px] font-bold text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

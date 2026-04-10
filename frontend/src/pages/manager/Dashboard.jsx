@@ -16,10 +16,10 @@ function getTimeGreeting() {
 }
 
 const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
 ]
-const DAY_LABELS = ["M","T","W","T","F","S","S"]
+const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"]
 
 function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
 function getFirstDayOfMonth(y, m) {
@@ -34,18 +34,18 @@ function isSameDay(a, b) {
 }
 
 const STATUS_STYLES = {
-  pending:      { bg: "#fee481", text: "#6b5413" },
-  approved:     { bg: "#0cf1aa", text: "#185b48" },
-  rejected:     { bg: "#f56464", text: "#570008" },
-  cancelled:    { bg: "#e2e8f0", text: "#475569" },
+  pending: { bg: "#fee481", text: "#6b5413" },
+  approved: { bg: "#0cf1aa", text: "#185b48" },
+  rejected: { bg: "#f56464", text: "#570008" },
+  cancelled: { bg: "#e2e8f0", text: "#475569" },
   acknowledged: { bg: "#93c5fd", text: "#1e3a8a" },
 }
 
 function getIconData(typeName) {
   const t = typeName?.toLowerCase() || ""
-  if (t.includes("sick"))     return { Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" }
-  if (t.includes("personal")) return { Icon: Users,       color: "#d06ab0", bg: "#f8e0f0" }
-  return                               { Icon: Umbrella,   color: "#1982c4", bg: "#e6f2fb" }
+  if (t.includes("sick")) return { Icon: Thermometer, color: "#f57a00", bg: "#fff2e5" }
+  if (t.includes("personal")) return { Icon: Users, color: "#d06ab0", bg: "#f8e0f0" }
+  return { Icon: Umbrella, color: "#1982c4", bg: "#e6f2fb" }
 }
 
 function formatDateShort(ds) {
@@ -54,19 +54,19 @@ function formatDateShort(ds) {
 function isSameDayStr(a, b) {
   const d1 = new Date(a), d2 = new Date(b)
   return d1.getFullYear() === d2.getFullYear() &&
-         d1.getMonth()    === d2.getMonth()    &&
-         d1.getDate()     === d2.getDate()
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
 }
 function formatDurationText(totalDays) {
   const totalHours = totalDays * 8
-  const days  = Math.floor(totalHours / 8)
-  const rem   = totalHours - days * 8
+  const days = Math.floor(totalHours / 8)
+  const rem = totalHours - days * 8
   const hours = Math.floor(rem)
-  const mins  = Math.round((rem - hours) * 60)
+  const mins = Math.round((rem - hours) * 60)
   const parts = []
-  if (days  > 0) parts.push(`${days}d`)
+  if (days > 0) parts.push(`${days}d`)
   if (hours > 0) parts.push(`${hours}h`)
-  if (mins  > 0) parts.push(`${mins}m`)
+  if (mins > 0) parts.push(`${mins}m`)
   return parts.join(" ") || "0h"
 }
 
@@ -101,13 +101,13 @@ function StatCard({ label, count, sublabel, bg, textColor, Icon, iconOpacity = 0
 // ─── Mini Calendar ────────────────────────────────────────────────────────────
 function MiniCalendar({ requests = [] }) {
   const now = new Date()
-  const [viewYear,     setViewYear]     = useState(now.getFullYear())
-  const [viewMonth,    setViewMonth]    = useState(now.getMonth())
+  const [viewYear, setViewYear] = useState(now.getFullYear())
+  const [viewMonth, setViewMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
-  const firstDay    = getFirstDayOfMonth(viewYear, viewMonth)
-  const prevDays    = getDaysInMonth(
+  const firstDay = getFirstDayOfMonth(viewYear, viewMonth)
+  const prevDays = getDaysInMonth(
     viewMonth === 0 ? viewYear - 1 : viewYear,
     viewMonth === 0 ? 11 : viewMonth - 1
   )
@@ -117,9 +117,9 @@ function MiniCalendar({ requests = [] }) {
     const set = new Set()
     requests.forEach(r => {
       if (r.status === "rejected" || r.status === "cancelled") return
-      const start = new Date(r.start_date); start.setHours(0,0,0,0)
-      const end   = new Date(r.end_date);   end.setHours(23,59,59,999)
-      const cur   = new Date(start)
+      const start = new Date(r.start_date); start.setHours(0, 0, 0, 0)
+      const end = new Date(r.end_date); end.setHours(23, 59, 59, 999)
+      const cur = new Date(start)
       while (cur <= end) {
         if (cur.getFullYear() === viewYear && cur.getMonth() === viewMonth) {
           set.add(cur.getDate())
@@ -137,8 +137,8 @@ function MiniCalendar({ requests = [] }) {
     target.setHours(12, 0, 0, 0)
     return requests.filter(r => {
       if (r.status === "rejected" || r.status === "cancelled") return false
-      const s = new Date(r.start_date); s.setHours(0,0,0,0)
-      const e = new Date(r.end_date);   e.setHours(23,59,59,999)
+      const s = new Date(r.start_date); s.setHours(0, 0, 0, 0)
+      const e = new Date(r.end_date); e.setHours(23, 59, 59, 999)
       return target >= s && target <= e
     })
   }, [selectedDate, requests])
@@ -160,7 +160,7 @@ function MiniCalendar({ requests = [] }) {
   }
   function handleDayClick(day) {
     const isSel = selectedDate && selectedDate.day === day &&
-                  selectedDate.month === viewMonth && selectedDate.year === viewYear
+      selectedDate.month === viewMonth && selectedDate.year === viewYear
     setSelectedDate(isSel ? null : { day, month: viewMonth, year: viewYear })
   }
   const isSelected = (day) =>
@@ -193,9 +193,9 @@ function MiniCalendar({ requests = [] }) {
           if (!cell.current) {
             return <div key={idx} className="py-1 text-[12px] text-[#cbd5e1] font-semibold">{cell.day}</div>
           }
-          const isToday  = isSameDay(new Date(viewYear, viewMonth, cell.day), new Date())
+          const isToday = isSameDay(new Date(viewYear, viewMonth, cell.day), new Date())
           const hasLeave = activeDays.has(cell.day)
-          const sel      = isSelected(cell.day)
+          const sel = isSelected(cell.day)
           return (
             <div
               key={idx}
@@ -204,8 +204,8 @@ function MiniCalendar({ requests = [] }) {
             >
               <span className={`relative z-10 inline-flex items-center justify-center w-7 h-7 rounded-full transition-all
                 ${isToday ? "bg-[#1c355e] text-white"
-                  : sel   ? "bg-[#f57a00] text-white ring-2 ring-[#f57a00]/30"
-                  :         "text-[#3f4a51] hover:bg-[#f0f3f8]"}`}>
+                  : sel ? "bg-[#f57a00] text-white ring-2 ring-[#f57a00]/30"
+                    : "text-[#3f4a51] hover:bg-[#f0f3f8]"}`}>
                 {cell.day}
               </span>
               {hasLeave && !isToday && !sel && (
@@ -271,7 +271,7 @@ function TeamCapacity({ totalMembers, outToday }) {
     : 100
 
   const radius = 54
-  const circ   = 2 * Math.PI * radius
+  const circ = 2 * Math.PI * radius
   const offset = circ - (capacity / 100) * circ
 
   let label = "All green! 🎉"
@@ -309,10 +309,10 @@ function TeamCapacity({ totalMembers, outToday }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ onNavigate }) {
   const { user } = useAuth()
-  const [requests,      setRequests]      = useState([])
-  const [totalMembers,  setTotalMembers]  = useState(0)
-  const [outToday,      setOutToday]      = useState(0)
-  const [loading,       setLoading]       = useState(true)
+  const [requests, setRequests] = useState([])
+  const [totalMembers, setTotalMembers] = useState(0)
+  const [outToday, setOutToday] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
@@ -321,16 +321,18 @@ export default function Dashboard({ onNavigate }) {
         const all = teamRes.data.leaveRequests || []
         setRequests(all)
 
-        // Unique employee IDs from any request = total team members we know about
-        const uniqueMembers = new Set(all.map(r => r.user_id))
-        setTotalMembers(uniqueMembers.size)
+        // Count real team members (Employees only)
+        const usersRes = await api.get("/users").catch(() => ({ data: { users: [] } }))
+        const teamUsers = (usersRes.data.users || []).filter(u => u.role === 'Employee')
+        const fallbackSize = new Set(all.map(r => r.user_id)).size
+        setTotalMembers(teamUsers.length > 0 ? teamUsers.length : fallbackSize)
 
         const today = new Date(); today.setHours(0, 0, 0, 0)
         const outIds = new Set()
         all.forEach(r => {
           if (r.status === "rejected" || r.status === "cancelled") return
-          const s = new Date(r.start_date); s.setHours(0,0,0,0)
-          const e = new Date(r.end_date);   e.setHours(23,59,59,999)
+          const s = new Date(r.start_date); s.setHours(0, 0, 0, 0)
+          const e = new Date(r.end_date); e.setHours(23, 59, 59, 999)
           if (today >= s && today <= e) outIds.add(r.user_id)
         })
         setOutToday(outIds.size)
@@ -343,9 +345,11 @@ export default function Dashboard({ onNavigate }) {
     load()
   }, [])
 
-  const pending    = requests.filter(r => r.status === "pending")
-  const approved   = requests.filter(r => r.status === "approved")
-  const recent     = requests.slice(0, 5)
+  const pending = requests.filter(r => r.status === "pending")
+  const acknowledged = requests.filter(r => r.status === "acknowledged")
+  const actionableCount = pending.length + acknowledged.length
+  const approved = requests.filter(r => r.status === "approved")
+  const recent = requests.slice(0, 5)
   const displayName = user?.full_name?.split(" ")[0] || "Boss"
 
   return (
@@ -361,8 +365,8 @@ export default function Dashboard({ onNavigate }) {
             <span className="text-[58px]" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }}>✨</span>
           </h1>
           <p className="text-[#64748b] text-[19px] font-medium max-w-xl">
-            {pending.length > 0
-              ? <>You have <span className="font-bold text-[#3f4a51]">{pending.length} request{pending.length !== 1 ? "s" : ""}</span> waiting for your approval today.</>
+            {actionableCount > 0
+              ? <>You have <span className="font-bold text-[#3f4a51]">{actionableCount} request{actionableCount !== 1 ? "s" : ""}</span> waiting for your attention.</>
               : "All caught up! No pending requests right now. 🎉"}
           </p>
         </div>
@@ -371,8 +375,8 @@ export default function Dashboard({ onNavigate }) {
         <div className="flex flex-wrap gap-5 mb-12">
           <StatCard
             label="Pending Approvals"
-            count={pending.length}
-            sublabel="Needs Action"
+            count={actionableCount}
+            sublabel="Need Action"
             bg="#fef08a"
             textColor="#713f12"
             Icon={ClipboardList}

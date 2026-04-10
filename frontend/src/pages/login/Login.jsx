@@ -112,7 +112,7 @@ export default function Login() {
             <div className="lp-field">
               <div className="lp-label-row">
                 <label className="lp-label" htmlFor="password">Password</label>
-                <button type="button" className="lp-forgot">Forgot Password?</button>
+                <button type="button" className="lp-forgot" onClick={() => navigate('/forgot-password')}>Forgot Password?</button>
               </div>
               <div className="lp-input-wrap">
                 <svg className="lp-input-icon" viewBox="0 0 16 21" fill="none" width="16" height="20">

@@ -11,6 +11,7 @@ const USER_SELECT = `
   u.username,
   u.full_name,
   u.email,
+  u.phone,
   u.hire_date,
   u.is_active,
   u.created_at,
@@ -117,17 +118,18 @@ router.put("/me/password", verifyToken, async (req, res) => {
 // Protected: verifyToken only.
 // NOTE: must be declared BEFORE PUT /:id.
 router.put("/me", verifyToken, async (req, res) => {
-  const { full_name, email, username } = req.body;
+  const { full_name, email, username, phone } = req.body;
 
   // Only pick fields that were actually supplied in the request body
   const updates = {};
   if (full_name !== undefined) updates.full_name = full_name;
   if (email !== undefined) updates.email = email;
   if (username !== undefined) updates.username = username;
+  if (phone !== undefined) updates.phone = phone;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({
-      message: "At least one field (full_name, email, username) is required.",
+      message: "At least one field (full_name, email, username, phone) is required.",
     });
   }
 
@@ -364,11 +366,11 @@ router.post(
 
 // ─── 5. GET / ─────────────────────────────────────────────────────────────────
 // Get all non-deleted users.
-// Protected: HR and Super Admin only.
+// Protected: HR, Super Admin, and Manager.
 router.get(
   "/",
   verifyToken,
-  requireRole("HR", "Super Admin"),
+  requireRole("HR", "Super Admin", "Manager"),
   async (req, res) => {
     try {
       const [rows] = await pool.query(
