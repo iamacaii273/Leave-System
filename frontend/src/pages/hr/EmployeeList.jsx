@@ -44,14 +44,7 @@ export default function EmployeeList({ onNavigate }) {
   const [error, setError] = useState("")
   const itemsPerPage = 5
 
-  const adminNavItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "employee", label: "Employee" },
-    { id: "reports", label: "Reports" },
-    { id: "leave-type", label: "Leave Type" }
-  ]
 
-  
 
   useEffect(() => {
     const loadEmployees = async () => {

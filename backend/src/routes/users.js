@@ -424,6 +424,7 @@ router.get(
            ON lb.user_id = u.id
           AND lb.year = ?
          WHERE u.deleted_at IS NULL
+           AND u.is_active = 1
            AND r.name = 'Employee'
          GROUP BY
            u.id,
@@ -482,7 +483,51 @@ router.get(
   },
 );
 
-// ─── 6. PUT /:id ──────────────────────────────────────────────────────────────
+// ─── 6. PUT /:id/resign ──────────────────────────────────────────────────────
+// Marks an employee as resigned: is_active = 0.
+// Data is preserved — the employee is NOT deleted from the database.
+// Protected: HR, Super Admin.
+router.put(
+  "/:id/resign",
+  verifyToken,
+  requireRole("HR", "Super Admin"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    if (id === req.user.id) {
+      return res.status(400).json({ message: "You cannot resign your own account." });
+    }
+
+    try {
+      const [userRows] = await pool.query(
+        `SELECT id, is_active FROM users WHERE id = ? AND deleted_at IS NULL`,
+        [id],
+      );
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      await pool.query(
+        `UPDATE users SET is_active = 0 WHERE id = ?`,
+        [id],
+      );
+
+      await logAction(
+        req.user.id,
+        "user_resigned",
+        `Employee ${id} marked as resigned by ${req.user.id}.`,
+      );
+
+      res.json({ message: "Employee marked as resigned successfully." });
+    } catch (err) {
+      console.error(`PUT /:id/resign error (id=${id}):`, err);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  },
+);
+
+// ─── 7. PUT /:id ──────────────────────────────────────────────────────────────
 // Update any user's info.
 // Allowed fields: full_name, email, username, role_id, position_id, hire_date, is_active.
 // Protected: Super Admin only.
@@ -598,7 +643,9 @@ router.put(
   },
 );
 
-// ─── 7. DELETE /:id ───────────────────────────────────────────────────────────
+
+// ─── 8. DELETE /:id ───────────────────────────────────────────────────────────
+
 // Soft-delete a user: sets deleted_at = NOW() and is_active = 0.
 // Protected: Super Admin only.
 router.delete(

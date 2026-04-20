@@ -159,14 +159,7 @@ export default function EmployeeProfile({ onNavigate }) {
   const { id } = useParams()
   const fileInputRef = useRef(null)
 
-  const adminNavItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "employee", label: "Employee" },
-    { id: "reports", label: "Reports" },
-    { id: "leave-type", label: "Leave Type" }
-  ]
 
-  
 
   const [profileImg, setProfileImg] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -226,9 +219,20 @@ export default function EmployeeProfile({ onNavigate }) {
     [requests, showAllActivities]
   )
 
-  const handleDeleteEmployee = () => {
-    setShowDeleteModal(false)
-    navigate("/hr/employee")
+  const [resigning, setResigning] = useState(false)
+
+  const handleResignEmployee = async () => {
+    setResigning(true)
+    try {
+      await api.put(`/users/${id}/resign`)
+      setShowDeleteModal(false)
+      navigate("/hr/employee")
+    } catch (err) {
+      console.error("Resign employee error:", err)
+      alert(err.response?.data?.message || "Failed to mark employee as resigned.")
+    } finally {
+      setResigning(false)
+    }
   }
 
   const handleProfilePicChange = (e) => {
@@ -333,10 +337,10 @@ export default function EmployeeProfile({ onNavigate }) {
               <div className="flex gap-4">
                 <button
                   onClick={() => setShowDeleteModal(true)}
-                  className="!bg-[#ff6b6b] hover:bg-[#fa5a5a] text-white rounded-[20px] !px-6 !py-4 flex items-center gap-3 font-bold text-[16px] shadow-sm transition-colors w-40 justify-center leading-tight"
+                  className="!bg-[#ff6b6b] hover:bg-[#fa5a5a] text-white rounded-[20px] !px-6 !py-4 flex items-center gap-3 font-bold text-[16px] shadow-sm transition-colors w-44 justify-center leading-tight"
                 >
                   <Trash2 size={20} />
-                  Delete<br />Employee
+                  Mark as<br />Resigned
                 </button>
                 <button
                   onClick={() => setShowAccessModal(true)}
@@ -535,12 +539,12 @@ export default function EmployeeProfile({ onNavigate }) {
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f3747]/40 backdrop-blur-sm">
           <div className="bg-white rounded-[32px] p-8 max-w-sm w-full mx-6 shadow-2xl flex flex-col items-center">
-            <div className="w-16 h-16 bg-[#ffe2e5] rounded-full flex items-center justify-center mb-6">
-              <Trash2 size={24} className="text-[#f05252]" />
+            <div className="w-16 h-16 bg-[#fff3cd] rounded-full flex items-center justify-center mb-6">
+              <Trash2 size={24} className="text-[#d97706]" />
             </div>
-            <h3 className="text-[24px] font-fredoka font-bold text-[#1f3747] text-center mb-2">Delete Employee?</h3>
+            <h3 className="text-[24px] font-fredoka font-bold text-[#1f3747] text-center mb-2">Mark as Resigned?</h3>
             <p className="text-[#64748b] text-[15px] text-center mb-8 font-medium">
-              This will permanently remove <span className="font-bold text-[#323940]">{displayedName}</span>'s profile and all associated data. This action cannot be undone.
+              <span className="font-bold text-[#323940]">{displayedName}</span>'s account will be deactivated and marked as resigned. Their data and history will be preserved.
             </p>
             <div className="flex gap-4 w-full">
               <button
@@ -551,11 +555,12 @@ export default function EmployeeProfile({ onNavigate }) {
                 Cancel
               </button>
               <button
-                onClick={handleDeleteEmployee}
+                onClick={handleResignEmployee}
+                disabled={resigning}
                 className="flex-1 !py-3.5 !px-4 rounded-full font-bold transition-colors shadow-sm"
-                style={{ backgroundColor: "#f05252", color: "#ffffff", fontSize: "15px" }}
+                style={{ backgroundColor: resigning ? "#e2e8f0" : "#f97316", color: resigning ? "#94a3b8" : "#ffffff", fontSize: "15px" }}
               >
-                Yes, Delete
+                {resigning ? "Processing..." : "Yes, Resign"}
               </button>
             </div>
           </div>
