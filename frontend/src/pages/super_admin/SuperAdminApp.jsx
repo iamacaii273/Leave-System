@@ -2,6 +2,8 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import SuperAdminDashboard from "./Dashboard"
 import EditUser from "./EditUser"
 import AddUser from "./AddUser"
+import Settings from "../shared/Settings"
+import Header from "../../components/Header"
 export default function SuperAdminApp() {
   const navigate = useNavigate()
 
@@ -14,6 +16,7 @@ export default function SuperAdminApp() {
       <Route path="dashboard" element={<SuperAdminDashboard onNavigate={handleNavigate} />} />
       <Route path="edit-user/:userId" element={<EditUser onNavigate={handleNavigate} />} />
       <Route path="add-user" element={<AddUser onNavigate={handleNavigate} />} />
+      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} modulePath="/superadmin" navItems={[{ id: "dashboard", label: "Dashboard" }]} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   )

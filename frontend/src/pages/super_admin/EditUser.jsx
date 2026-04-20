@@ -1,19 +1,8 @@
 import { useState, useRef, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Camera, ChevronDown, CheckCircle, Ban, Shield, Bell, Settings, User, Briefcase, Lock, Loader2 } from "lucide-react"
+import Header from "../../components/Header"
 import api from "../../services/api"
-
-const ROLES = [
-  { id: 'rl000001-0000-0000-0000-000000000001', name: 'Employee' },
-  { id: 'rl000001-0000-0000-0000-000000000002', name: 'Manager' },
-  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR Admin' }
-];
-
-const POSITIONS = [
-  { id: 'ps000001-0000-0000-0000-000000000001', name: 'Developer' },
-  { id: 'ps000001-0000-0000-0000-000000000002', name: 'HR Officer' },
-  { id: 'ps000001-0000-0000-0000-000000000010', name: 'Team Manager' }
-];
 
 const PHONE_PREFIXES = [
   { code: '+66', label: '+66 (TH)', max: 10, placeholder: "0812345678" },
@@ -48,14 +37,27 @@ export default function EditUser({ onNavigate }) {
   const [showSuccess, setShowSuccess] = useState(false)
   const [profileImg, setProfileImg] = useState(null)
 
+  const [roles, setRoles] = useState([])
+  const [positions, setPositions] = useState([])
+  const [currentRoleName, setCurrentRoleName] = useState('Employee')
+
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await api.get(`/users/${userId}`)
-        const u = data.user
+        const [userRes, rolesRes, posRes] = await Promise.all([
+          api.get(`/users/${userId}`),
+          api.get('/metadata/roles'),
+          api.get('/metadata/positions')
+        ])
+        const u = userRes.data?.user
+        
+        const fetchedRoles = rolesRes.data?.roles || []
+        setRoles(fetchedRoles)
+        setPositions(posRes.data?.positions || [])
+
         setUserData({
           ...u,
-          initial: u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+          initial: u.full_name ? u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U',
           joinDate: u.hire_date ? new Date(u.hire_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : 'Unknown'
         })
 
@@ -79,6 +81,11 @@ export default function EditUser({ onNavigate }) {
           status: u.is_active === 1 ? 'Active' : 'Resigned',
           hireDate: u.hire_date ? u.hire_date.split('T')[0] : ''
         })
+        
+        // Find role name for privileges string
+        const selectedRole = fetchedRoles.find(r => r.id === u.role_id)
+        setCurrentRoleName(selectedRole ? selectedRole.name : (u.role || 'Employee'))
+        
       } catch (err) {
         console.error(err)
         setErrorMsg('Failed to load user data.')
@@ -86,7 +93,7 @@ export default function EditUser({ onNavigate }) {
         setLoadingInitial(false)
       }
     }
-    if (userId) fetchUser()
+    if (userId) fetchData()
   }, [userId])
 
   const selectedPhoneConfig = PHONE_PREFIXES.find(p => p.code === form.phonePrefix) || PHONE_PREFIXES[0]
@@ -151,46 +158,26 @@ export default function EditUser({ onNavigate }) {
   }
 
   const fullName = form.fullName.trim()
+  const firstName = fullName.split(' ')[0] || 'User'
 
   // Privilege descriptions based on role
   const privilegeDesc = {
-    'HR Admin': { title: 'HR Admin', desc: `As an HR Admin, ${form.firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
-    'HR': { title: 'HR Admin', desc: `As an HR Admin, ${form.firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
-    'Manager': { title: 'Manager', desc: `As a Manager, ${form.firstName} can approve team leave requests, view team reports, and manage direct reports.` },
-    'Employee': { title: 'Employee', desc: `As an Employee, ${form.firstName} can submit leave requests, view their own leave balance, and update personal information.` },
-    'Super Admin': { title: 'Super Admin', desc: `As a Super Admin, ${form.firstName} has full system access including user management, system configuration, and all administrative functions.` },
+    'HR Admin': { title: 'HR Admin', desc: `As an HR Admin, ${firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
+    'HR': { title: 'HR Admin', desc: `As an HR Admin, ${firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
+    'Manager': { title: 'Manager', desc: `As a Manager, ${firstName} can approve team leave requests, view team reports, and manage direct reports.` },
+    'Employee': { title: 'Employee', desc: `As an Employee, ${firstName} can submit leave requests, view their own leave balance, and update personal information.` },
+    'Super Admin': { title: 'Super Admin', desc: `As a Super Admin, ${firstName} has full system access including user management, system configuration, and all administrative functions.` },
   }
 
-  const priv = privilegeDesc[form.role] || privilegeDesc['Employee']
+  const priv = privilegeDesc[currentRoleName] || privilegeDesc['Employee']
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="FLOW Digital" className="h-10 object-contain" />
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-              <Bell size={20} className="text-gray-500" />
-              <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full"></span>
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
-              <Settings size={20} className="text-gray-500" />
-            </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
-              <div className="text-right">
-                <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">Alex Chen</p>
-                <p className="text-[11px] text-[#64748b]">Super Admin</p>
-              </div>
-              <div className="w-10 h-10 bg-[#1e3450] rounded-full flex items-center justify-center">
-                <User size={20} className="text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        activePage=""
+        onNavigate={onNavigate}
+        navItems={[{ id: "dashboard", label: "Dashboard" }]}
+      />
 
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfilePicChange} />
@@ -342,10 +329,14 @@ export default function EditUser({ onNavigate }) {
                 <div className="relative">
                   <select
                     value={form.role}
-                    onChange={(e) => setForm(p => ({ ...p, role: e.target.value }))}
+                    onChange={(e) => {
+                      setForm(p => ({ ...p, role: e.target.value }));
+                      const selectedRole = roles.find(r => r.id === e.target.value);
+                      if (selectedRole) setCurrentRoleName(selectedRole.name);
+                    }}
                     className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                   >
-                    {ROLES.map(r => (
+                    {roles.map(r => (
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
@@ -360,7 +351,7 @@ export default function EditUser({ onNavigate }) {
                     onChange={(e) => setForm(p => ({ ...p, position: e.target.value }))}
                     className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                   >
-                    {POSITIONS.map(p => (
+                    {positions.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>

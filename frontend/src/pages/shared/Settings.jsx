@@ -3,7 +3,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
 import { ShieldAlert, User, KeyRound, Save, BadgeCheck, Bell, Smartphone, Lock } from "lucide-react"
 
-export default function Settings({ onNavigate, HeaderComponent }) {
+export default function Settings({ onNavigate, HeaderComponent, ...props }) {
   const { user, updateUser } = useAuth()
   
   // States
@@ -53,7 +53,7 @@ export default function Settings({ onNavigate, HeaderComponent }) {
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col">
-      <HeaderComponent activePage="settings" onNavigate={onNavigate} />
+      <HeaderComponent activePage="settings" onNavigate={onNavigate} {...props} />
 
       <main className="max-w-4xl mx-auto px-6 py-12 w-full flex-grow">
         
