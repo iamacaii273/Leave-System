@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import ManagerHeader from "./ManagerHeader"
+import Header from "../../components/Header"
 import api from "../../services/api"
 import {
   Umbrella, Thermometer, Users, CheckCircle, XCircle,
@@ -146,13 +146,13 @@ export default function RequestDetail({ onNavigate }) {
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#eef2f9", display: "flex", flexDirection: "column" }}>
-      <ManagerHeader activePage="approvals" onNavigate={onNavigate} />
+      <Header activePage="approvals" onNavigate={onNavigate} />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "16px", fontWeight: 600 }}>Loading request…</div>
     </div>
   )
   if (error || !data) return (
     <div style={{ minHeight: "100vh", background: "#eef2f9", display: "flex", flexDirection: "column" }}>
-      <ManagerHeader activePage="approvals" onNavigate={onNavigate} />
+      <Header activePage="approvals" onNavigate={onNavigate} />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#f56464", fontSize: "16px", fontWeight: 600 }}>{error || "Request not found."}</div>
     </div>
   )
@@ -172,7 +172,7 @@ export default function RequestDetail({ onNavigate }) {
         <RejectModal onConfirm={handleReject} onCancel={() => setShowRejectModal(false)} loading={actionLoading === "reject"} />
       )}
 
-      <ManagerHeader activePage="approvals" onNavigate={onNavigate} />
+      <Header activePage="approvals" onNavigate={onNavigate} />
 
       <main style={{ maxWidth: "860px", margin: "0 auto", padding: "36px 24px 60px", width: "100%" }}>
 
@@ -544,3 +544,4 @@ export default function RequestDetail({ onNavigate }) {
     </div>
   )
 }
+

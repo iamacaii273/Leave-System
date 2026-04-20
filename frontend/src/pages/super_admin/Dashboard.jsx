@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Users, UserRoundX, UserCheck, UserCog, User, UserPlus, IdCardLanyard, ChevronLeft, ChevronRight, PenLine, Search, Bell, Settings, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../services/api"
+import Header from "../../components/Header"
 
 export default function SuperAdminDashboard({ onNavigate }) {
   const navigate = useNavigate()
@@ -117,31 +118,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="FLOW Digital" className="h-10 object-contain" />
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-              <Bell size={20} className="text-gray-500" />
-              <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full"></span>
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
-              <Settings size={20} className="text-gray-500" />
-            </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
-              <div className="text-right">
-                <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">Alex Chen</p>
-                <p className="text-[11px] text-[#64748b]">Super Admin</p>
-              </div>
-              <div className="w-10 h-10 bg-[#1e3450] rounded-full flex items-center justify-center">
-                <User size={20} className="text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header activePage="dashboard" onNavigate={onNavigate} />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">
 

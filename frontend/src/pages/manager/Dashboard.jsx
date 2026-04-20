@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import Header from "./ManagerHeader"
+import Header from "../../components/Header"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
 import {
@@ -489,3 +489,4 @@ export default function Dashboard({ onNavigate }) {
     </div>
   )
 }
+

@@ -4,7 +4,7 @@ import Approvals from "./Approvals"
 import History from "./History"
 import RequestDetail from "./RequestDetail"
 import Settings from "../shared/Settings"
-import ManagerHeader from "./ManagerHeader"
+import Header from "../../components/Header"
 
 export default function ManagerApp() {
   const navigate = useNavigate()
@@ -16,8 +16,9 @@ export default function ManagerApp() {
       <Route path="approvals"        element={<Approvals     onNavigate={handleNavigate} />} />
       <Route path="history"          element={<History       onNavigate={handleNavigate} />} />
       <Route path="requests/:id"     element={<RequestDetail onNavigate={handleNavigate} />} />
-      <Route path="settings"         element={<Settings      onNavigate={handleNavigate} HeaderComponent={ManagerHeader} />} />
+      <Route path="settings"         element={<Settings      onNavigate={handleNavigate} HeaderComponent={Header} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   )
 }
+

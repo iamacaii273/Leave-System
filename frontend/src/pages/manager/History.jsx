@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import ManagerHeader from "./ManagerHeader"
+import Header from "../../components/Header"
 import api from "../../services/api"
 import { Umbrella, Thermometer, Users, Search } from "lucide-react"
 
@@ -179,7 +179,7 @@ export default function History({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col">
-      <ManagerHeader activePage="history" onNavigate={onNavigate} />
+      <Header activePage="history" onNavigate={onNavigate} />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">
 
@@ -281,3 +281,4 @@ export default function History({ onNavigate }) {
     </div>
   )
 }
+

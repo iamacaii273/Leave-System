@@ -213,7 +213,6 @@ router.post(
       email,
       phone,
       password,
-      phone,
       role_id,
       position_id,
       hire_date,

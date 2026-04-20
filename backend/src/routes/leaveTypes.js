@@ -8,8 +8,7 @@ router.get("/", verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT id, name, default_days_per_year, requires_attachment,
-              is_active, min_service_months, created_at,
-              description, color_type, icon_name
+              is_active, min_service_months, created_at
        FROM leave_types
        WHERE is_active = 1
        ORDER BY name ASC`,
@@ -33,9 +32,6 @@ router.post(
       default_days_per_year,
       requires_attachment,
       min_service_months,
-      description,
-      color_type,
-      icon_name,
     } = req.body;
 
     if (!name || name.trim() === "") {
@@ -58,7 +54,7 @@ router.post(
       const id = uuidv4();
 
       await pool.query(
-        `INSERT INTO leave_types (id, name, default_days_per_year, requires_attachment, min_service_months, description, color_type, icon_name)
+        `INSERT INTO leave_types (id, name, default_days_per_year, requires_attachment, min_service_months)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
@@ -74,8 +70,7 @@ router.post(
 
       const [created] = await pool.query(
         `SELECT id, name, default_days_per_year, requires_attachment,
-              is_active, min_service_months, created_at,
-              description, color_type, icon_name
+              is_active, min_service_months, created_at
        FROM leave_types
        WHERE id = ?`,
         [id],
@@ -105,9 +100,6 @@ router.put(
       requires_attachment,
       min_service_months,
       is_active,
-      description,
-      color_type,
-      icon_name,
     } = req.body;
 
     try {
@@ -196,8 +188,7 @@ router.put(
 
       const [updated] = await pool.query(
         `SELECT id, name, default_days_per_year, requires_attachment,
-              is_active, min_service_months, created_at,
-              description, color_type, icon_name
+              is_active, min_service_months, created_at
        FROM leave_types
        WHERE id = ?`,
         [id],

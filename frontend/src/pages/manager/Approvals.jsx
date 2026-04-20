@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import ManagerHeader from "./ManagerHeader"
+import Header from "../../components/Header"
 import api from "../../services/api"
 import {
   Umbrella, Thermometer, Users, ChevronLeft, ChevronRight,
@@ -506,7 +506,7 @@ export default function Approvals({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col">
-      <ManagerHeader activePage="approvals" onNavigate={onNavigate} />
+      <Header activePage="approvals" onNavigate={onNavigate} />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">
 
@@ -630,3 +630,4 @@ export default function Approvals({ onNavigate }) {
     </div>
   )
 }
+
