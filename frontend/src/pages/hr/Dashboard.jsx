@@ -42,10 +42,7 @@ export default function Dashboard({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const adminProfile = {
-    name: "HR",
-    role: "Global HR Manager"
-  }
+  
 
   const [showAllEmployees, setShowAllEmployees] = useState(false)
   const [stats, setStats] = useState({
@@ -107,7 +104,6 @@ export default function Dashboard({ onNavigate }) {
         activePage="dashboard"
         onNavigate={onNavigate}
         navItems={adminNavItems}
-        user={adminProfile}
       />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">

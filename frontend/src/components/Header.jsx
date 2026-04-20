@@ -12,8 +12,7 @@ export default function Header({
     { id: "history", label: "History" }
   ]
 }) {
-  const { user: authUser, logout } = useAuth()
-  const displayUser = authUser || { full_name: "Alex Chen", role: "Software Developer" }
+  const { user, logout } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const navigate = useNavigate()
 
@@ -57,8 +56,8 @@ export default function Header({
               className="flex items-center gap-3 pl-6 border-l border-gray-200 focus:outline-none"
             >
               <div className="text-right">
-                <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">{displayUser?.full_name || displayUser?.name || 'Employee'}</p>
-                <p className="text-[11px] text-[#64748b] capitalize">{displayUser?.role || 'Employee'}</p>
+                <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">{user?.full_name || 'User'}</p>
+                <p className="text-[11px] text-[#64748b] capitalize">{user?.role || 'Unknown Role'}</p>
               </div>
               <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
                 <User size={20} className="text-sky-600" />

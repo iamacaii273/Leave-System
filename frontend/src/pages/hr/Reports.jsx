@@ -173,10 +173,7 @@ export default function Reports({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const adminProfile = {
-    name: "HR",
-    role: "Global HR Manager"
-  }
+  
 
   // Balances pagination
   const balTotalPages = Math.ceil(balancesData.length / balancesPerPage) || 1
@@ -233,7 +230,6 @@ export default function Reports({ onNavigate }) {
         activePage="reports"
         onNavigate={onNavigate}
         navItems={adminNavItems}
-        user={adminProfile}
       />
 
       <main className="max-w-5xl mx-auto px-6 pt-12 w-full flex-grow flex flex-col gap-8">

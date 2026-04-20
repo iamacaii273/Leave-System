@@ -13,10 +13,7 @@ export default function AddEmployee({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const adminProfile = {
-    name: "HR",
-    role: "Global HR Manager"
-  }
+  
 
   const [form, setForm] = useState({
     fullName: '',
@@ -155,7 +152,6 @@ export default function AddEmployee({ onNavigate }) {
         activePage="employee"
         onNavigate={onNavigate}
         navItems={adminNavItems}
-        user={adminProfile}
       />
 
       <main className="max-w-4xl mx-auto px-6 py-12 w-full flex-grow">
