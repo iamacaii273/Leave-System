@@ -19,7 +19,7 @@ export default function EmployeeApp() {
       <Route path="request" element={<Request onNavigate={handleNavigate} />} />
       <Route path="history" element={<History onNavigate={handleNavigate} />} />
       <Route path="requests/:id" element={<RequestDetail onNavigate={handleNavigate} />} />
-      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} />} />
+      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} navItems={[{ id: "dashboard", label: "Dashboard" }, { id: "request", label: "Request" }, { id: "history", label: "History" }]} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   )

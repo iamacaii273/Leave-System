@@ -166,10 +166,7 @@ export default function EmployeeProfile({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const adminProfile = {
-    name: "HR",
-    role: "Global HR Manager"
-  }
+  
 
   const [profileImg, setProfileImg] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -269,7 +266,6 @@ export default function EmployeeProfile({ onNavigate }) {
         activePage="employee"
         onNavigate={onNavigate}
         navItems={adminNavItems}
-        user={adminProfile}
       />
 
       <input

@@ -51,10 +51,7 @@ export default function EmployeeList({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const adminProfile = {
-    name: "HR",
-    role: "Global HR Manager"
-  }
+  
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -116,7 +113,6 @@ export default function EmployeeList({ onNavigate }) {
         activePage="employee"
         onNavigate={onNavigate}
         navItems={adminNavItems}
-        user={adminProfile}
       />
 
       <main className="max-w-5xl mx-auto px-6 py-12 w-full flex-grow">
