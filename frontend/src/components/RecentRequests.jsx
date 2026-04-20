@@ -1,5 +1,7 @@
 import { Umbrella, Users, Thermometer } from "lucide-react"
 
+/*file ตารางแสดงคำขอลาล่าสุด*/
+
 export default function RecentRequests({ requests = [] }) {
   const statusStyles = {
     approved: { bg: "#0cf1aa", text: "#185b48" },
@@ -57,7 +59,7 @@ export default function RecentRequests({ requests = [] }) {
           requests.map((req) => {
             const { Icon, color, bg } = getIconData(req.leave_type_name);
             const styleLabel = statusStyles[req.status.toLowerCase()] || statusStyles.pending;
-            
+
             let dateRange = formatDateShort(req.start_date);
             if (!isSameDayStr(req.start_date, req.end_date)) {
               dateRange += ` - ${formatDateShort(req.end_date)}`;

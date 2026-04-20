@@ -7,7 +7,7 @@ const ROLE_HOME = {
   Employee: '/employee/dashboard',
   Manager: '/manager/dashboard',
   HR: '/hr/dashboard',
-  'Super Admin': '/admin/dashboard',
+  'Super Admin': '/superadmin/dashboard',
 }
 
 /* ── SVG icon paths from the design reference ───────────────────────── */

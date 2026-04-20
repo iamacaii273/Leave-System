@@ -211,8 +211,8 @@ router.post(
     const {
       full_name,
       email,
-      phone,
       password,
+      phone,
       role_id,
       position_id,
       hire_date,
@@ -447,20 +447,22 @@ router.get(
   },
 );
 
+// ─── 5.5 GET /:id ─────────────────────────────────────────────────────────────
+// Get user by ID.
+// Protected: HR and Super Admin only.
 router.get(
   "/:id",
   verifyToken,
   requireRole("HR", "Super Admin"),
   async (req, res) => {
-    const { id } = req.params;
-
     try {
+      const { id } = req.params;
       const [rows] = await pool.query(
         `SELECT ${USER_SELECT}
-       FROM   users u
-       ${USER_JOINS}
-       WHERE  u.id = ?
-         AND  u.deleted_at IS NULL`,
+         FROM   users u
+         ${USER_JOINS}
+         WHERE  u.id = ?
+           AND  u.deleted_at IS NULL`,
         [id],
       );
 
@@ -470,40 +472,12 @@ router.get(
 
       res.json({ user: rows[0] });
     } catch (err) {
-      console.error("GET /users/:id error:", err);
+      console.error("GET /:id error:", err);
       res.status(500).json({ message: "Internal server error." });
     }
   },
 );
 
-router.get(
-  "/:id",
-  verifyToken,
-  requireRole("HR", "Super Admin"),
-  async (req, res) => {
-    const { id } = req.params;
-
-    try {
-      const [rows] = await pool.query(
-        `SELECT ${USER_SELECT}
-       FROM   users u
-       ${USER_JOINS}
-       WHERE  u.id = ?
-         AND  u.deleted_at IS NULL`,
-        [id],
-      );
-
-      if (rows.length === 0) {
-        return res.status(404).json({ message: "User not found." });
-      }
-
-      res.json({ user: rows[0] });
-    } catch (err) {
-      console.error("GET /users/:id error:", err);
-      res.status(500).json({ message: "Internal server error." });
-    }
-  },
-);
 
 // ─── 6. PUT /:id ──────────────────────────────────────────────────────────────
 // Update any user's info.
@@ -519,6 +493,8 @@ router.put(
       full_name,
       email,
       username,
+      password,
+      phone,
       role_id,
       position_id,
       hire_date,
@@ -530,10 +506,15 @@ router.put(
     if (full_name !== undefined) updates.full_name = full_name;
     if (email !== undefined) updates.email = email;
     if (username !== undefined) updates.username = username;
+    if (phone !== undefined) updates.phone = phone;
     if (role_id !== undefined) updates.role_id = role_id;
     if (position_id !== undefined) updates.position_id = position_id;
     if (hire_date !== undefined) updates.hire_date = hire_date;
     if (is_active !== undefined) updates.is_active = is_active;
+    
+    if (password) {
+       updates.password_hash = await bcrypt.hash(password, 10);
+    }
 
     if (Object.keys(updates).length === 0) {
       return res

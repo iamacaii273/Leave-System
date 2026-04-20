@@ -12,7 +12,6 @@ import SuperAdminApp from './pages/super_admin/SuperAdminApp'
 import Unauthorized from './pages/Unauthorized'
 
 import './index.css'
-import './App.css'
 
 /* ── App ──────────────────────────────────────────────────────────────── */
 export default function App() {
@@ -47,11 +46,15 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          {/* Super Admin pages */}
-          <Route path="/superadmin/*" element={<SuperAdminApp />} />
+          {/* Super Admin pages — Super Admin role only */}
+          <Route path="/superadmin/*" element={
+            <ProtectedRoute allowedRoles={["Super Admin"]}>
+              <SuperAdminApp />
+            </ProtectedRoute>
+          } />
 
           {/* Root redirect */}
-          <Route path="/" element={<Navigate to="/superadmin/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

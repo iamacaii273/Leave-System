@@ -1,6 +1,7 @@
-import { useState } from "react"
-import { Users, Briefcase, UserCog, User, UserPlus, IdCardLanyard, ChevronLeft, ChevronRight, PenLine, Search, Bell, Settings } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Users, UserRoundX, UserCheck, UserCog, User, UserPlus, IdCardLanyard, ChevronLeft, ChevronRight, PenLine, Search, Bell, Settings, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import api from "../../services/api"
 
 export default function SuperAdminDashboard({ onNavigate }) {
   const navigate = useNavigate()
@@ -12,26 +13,44 @@ export default function SuperAdminDashboard({ onNavigate }) {
   // Add user form
   const [newUser, setNewUser] = useState({ fullName: '', email: '', username: '', role: 'Employee', password: '' })
 
-  const [allUsers, setAllUsers] = useState([
-    { id: 1, name: "Alex Thompson", email: "alex.t@happyhub.com", role: "HR", status: "Active", img: "3" },
-    { id: 2, name: "Jordan Smith", email: "j.smith@happyhub.com", role: "Employee", status: "Resigned", img: null, initial: "JS", initialBg: "#fef08a" },
-    { id: 3, name: "Marcus Chen", email: "m.chen@happyhub.com", role: "Manager", status: "Active", img: "11" },
-    { id: 4, name: "Sarah Jenkins", email: "s.jenkins@happyhub.com", role: "HR", status: "Resigned", img: "5" },
-    { id: 5, name: "Emily Watson", email: "e.watson@happyhub.com", role: "Employee", status: "Active", img: "9" },
-    { id: 6, name: "David Park", email: "d.park@happyhub.com", role: "Manager", status: "Active", img: "12" },
-    { id: 7, name: "Lisa Chang", email: "l.chang@happyhub.com", role: "Employee", status: "Active", img: "1" },
-    { id: 8, name: "Robert Kim", email: "r.kim@happyhub.com", role: "HR", status: "Active", img: "8" },
-    { id: 9, name: "Nina Patel", email: "n.patel@happyhub.com", role: "Employee", status: "Resigned", img: null, initial: "NP", initialBg: "#c4b5fd" },
-    { id: 10, name: "Tom Hardy", email: "t.hardy@happyhub.com", role: "Manager", status: "Active", img: null, initial: "TH", initialBg: "#a7f3d0" },
-    { id: 11, name: "Rachel Green", email: "r.green@happyhub.com", role: "Employee", status: "Active", img: "7" },
-    { id: 12, name: "Oliver Wang", email: "o.wang@happyhub.com", role: "Employee", status: "Active", img: null, initial: "OW", initialBg: "#fca5a5" },
-  ])
+  const [allUsers, setAllUsers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true)
+      try {
+        const { data } = await api.get('/users')
+        const colors = ['#fef08a', '#c4b5fd', '#a7f3d0', '#fca5a5', '#bae6fd']
+
+        const mappedUsers = data.users.map((u, i) => {
+          const nameStr = u.full_name || u.username || 'Unknown User'
+          const initials = nameStr.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+          return {
+            id: u.id,
+            name: nameStr,
+            email: u.email || '',
+            role: u.role || 'Employee',
+            status: u.is_active === 1 ? 'Active' : 'Resigned',
+            img: null,
+            initial: initials || 'XX',
+            initialBg: colors[i % colors.length]
+          }
+        })
+        setAllUsers(mappedUsers)
+      } catch (err) {
+        console.error('Failed to fetch users:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchUsers()
+  }, [])
 
   // Stats computed from data
   const totalUsers = allUsers.length
-  const totalHR = allUsers.filter(u => u.role === 'HR').length
-  const totalManagers = allUsers.filter(u => u.role === 'Manager').length
-  const totalEmployees = allUsers.filter(u => u.role === 'Employee').length
+  const totalActive = allUsers.filter(u => u.status === 'Active').length
+  const totalResigned = allUsers.filter(u => u.status === 'Resigned').length
 
   // Filter
   const filteredUsers = searchTerm
@@ -69,9 +88,8 @@ export default function SuperAdminDashboard({ onNavigate }) {
   // Stat cards data
   const stats = [
     { label: 'TOTAL USERS', value: totalUsers.toLocaleString(), icon: Users, iconBg: '#eef2f9', iconColor: '#4c6367' },
-    { label: 'TOTAL HR', value: totalHR.toLocaleString(), icon: IdCardLanyard, iconBg: '#EFCFFE', iconColor: '#6F557D' },
-    { label: 'TOTAL MANAGERS', value: totalManagers.toLocaleString(), icon: UserCog, iconBg: '#FEF3C7', iconColor: '#B45309' },
-    { label: 'TOTAL EMPLOYEES', value: totalEmployees.toLocaleString(), icon: User, iconBg: '#fde2e4', iconColor: '#c75050' },
+    { label: 'TOTAL ACTIVE', value: totalActive.toLocaleString(), icon: UserCheck, iconBg: '#d1f2e8', iconColor: '#1a7f5a' },
+    { label: 'TOTAL RESIGNED', value: totalResigned.toLocaleString(), icon: UserRoundX, iconBg: '#fde2e4', iconColor: '#b5283d' },
   ]
 
   // Get greeting
@@ -138,7 +156,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {stats.map((stat, idx) => (
             <div key={idx} className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
@@ -156,7 +174,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[36px] font-fredoka font-bold text-[#1f3747]">Registry</h2>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => navigate('/superadmin/add-user')}
             className="flex items-center gap-2 rounded-full font-bold text-[15px] transition-colors !px-7 !py-3.5"
             style={{ backgroundColor: '#1f3747', color: '#ffffff' }}
           >
@@ -189,7 +207,12 @@ export default function SuperAdminDashboard({ onNavigate }) {
 
           {/* Table Rows */}
           <div>
-            {paginatedUsers.length === 0 ? (
+            {isLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center text-[#94a3b8] gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#3ea8e5]" />
+                <p className="text-[15px] font-bold">Synchronizing user data...</p>
+              </div>
+            ) : paginatedUsers.length === 0 ? (
               <div className="py-16 text-center text-[#94a3b8] text-[15px] font-bold">
                 No users found.
               </div>
@@ -281,67 +304,6 @@ export default function SuperAdminDashboard({ onNavigate }) {
           </div>
         </div>
       </main>
-
-      {/* Add New User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f3747]/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[32px] p-8 max-w-md w-full mx-6 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#eef2f9' }}>
-                <UserPlus size={22} className="text-[#4c6367]" />
-              </div>
-              <div>
-                <h3 className="text-[22px] font-fredoka font-bold text-[#1f3747]">Add New User</h3>
-                <p className="text-[13px] text-[#94a3b8] font-medium">Create a new system account</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase">Full Name <span className="text-red-400">*</span></label>
-                <input type="text" placeholder="e.g. John Doe" value={newUser.fullName} onChange={e => setNewUser(p => ({ ...p, fullName: e.target.value }))} className="bg-[#f4f7f9] rounded-xl py-3 px-4 text-[15px] text-[#323940] placeholder-[#a6b6c5] outline-none focus:ring-2 focus:ring-[#567278]/20" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase">Email <span className="text-red-400">*</span></label>
-                <input type="email" placeholder="name@happyhub.com" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} className="bg-[#f4f7f9] rounded-xl py-3 px-4 text-[15px] text-[#323940] placeholder-[#a6b6c5] outline-none focus:ring-2 focus:ring-[#567278]/20" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase">Username <span className="text-red-400">*</span></label>
-                  <input type="text" placeholder="@username" value={newUser.username} onChange={e => setNewUser(p => ({ ...p, username: e.target.value }))} className="bg-[#f4f7f9] rounded-xl py-3 px-4 text-[15px] text-[#323940] placeholder-[#a6b6c5] outline-none focus:ring-2 focus:ring-[#567278]/20" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase">Role</label>
-                  <select value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))} className="bg-[#f4f7f9] rounded-xl py-3 px-4 text-[15px] text-[#323940] outline-none appearance-none cursor-pointer">
-                    <option>Employee</option>
-                    <option>HR</option>
-                    <option>Manager</option>
-                    <option>Super Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase">Password <span className="text-red-400">*</span></label>
-                <input type="password" placeholder="••••••••" value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} className="bg-[#f4f7f9] rounded-xl py-3 px-4 text-[15px] text-[#323940] placeholder-[#a6b6c5] outline-none focus:ring-2 focus:ring-[#567278]/20 tracking-widest" />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-8">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 !py-3.5 rounded-full font-bold transition-colors" style={{ backgroundColor: '#e9eff5', color: '#4c6367', fontSize: '15px' }}>
-                Cancel
-              </button>
-              <button
-                onClick={handleAddUser}
-                disabled={!newUser.fullName.trim() || !newUser.email.trim() || !newUser.username.trim() || !newUser.password.trim()}
-                className={`flex-1 !py-3.5 rounded-full font-bold transition-colors ${!newUser.fullName.trim() || !newUser.email.trim() || !newUser.username.trim() || !newUser.password.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={{ backgroundColor: '#1f3747', color: '#ffffff', fontSize: '15px' }}
-              >
-                Create User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
