@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import EmployeeApp from './pages/employee/EmployeeApp'
 import HrApp from './pages/hr/HrApp'
 import ManagerApp from './pages/manager/ManagerApp'
+import SuperAdminApp from './pages/super_admin/SuperAdminApp'
 import Unauthorized from './pages/Unauthorized'
 
 import './index.css'
@@ -46,8 +47,11 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          {/* Super Admin pages */}
+          <Route path="/superadmin/*" element={<SuperAdminApp />} />
+
           {/* Root redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/superadmin/dashboard" replace />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />
