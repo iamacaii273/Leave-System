@@ -11,7 +11,9 @@ export default function Header({
   const { user: authUser, logout } = useAuth()
   const displayUser = authUser || { full_name: "Alex Chen", role: "Software Developer" }
 
-  const defaultNavItems = displayUser.role === 'Manager' 
+  const defaultNavItems = displayUser.role === 'Super Admin'
+    ? []
+    : displayUser.role === 'Manager' 
     ? [
         { id: "dashboard", label: "Dashboard" },
         { id: "approvals", label: "Approvals" },
@@ -36,7 +38,9 @@ export default function Header({
     <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-10">
-          <img src="/logo.png" alt="Logo" className="h-9 w-auto object-contain" />
+          <button onClick={() => onNavigate && onNavigate('dashboard')} className="hover:opacity-80 transition-opacity focus:outline-none">
+            <img src="/logo.png" alt="Logo" className="h-9 w-auto object-contain" />
+          </button>
           <nav className="flex items-center gap-8">
             {navItems.map((item) => (
             <div key={item.id} className="relative group">
@@ -57,10 +61,12 @@ export default function Header({
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg">
-            <Bell size={20} className="text-gray-500" />
-            <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full"></span>
-          </button>
+          {displayUser?.role !== 'Super Admin' && (
+            <button className="relative p-2 hover:bg-gray-100 rounded-lg">
+              <Bell size={20} className="text-gray-500" />
+              <span className="absolute top-1.5 right-2 w-2 h-2 bg-[#f05252] border border-white rounded-full"></span>
+            </button>
+          )}
           <div className="flex items-center gap-1">
             <button 
               onClick={() => onNavigate && onNavigate("settings")}
