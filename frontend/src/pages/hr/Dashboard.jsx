@@ -103,7 +103,6 @@ export default function Dashboard({ onNavigate }) {
       <Header
         activePage="dashboard"
         onNavigate={onNavigate}
-        navItems={adminNavItems}
       />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">

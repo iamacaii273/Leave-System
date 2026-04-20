@@ -107,13 +107,20 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       });
     }
 
-    const remainingDays = parseFloat(balanceRows[0].remaining_days);
+    const [pendingRows] = await pool.query(
+      `SELECT COALESCE(SUM(total_days), 0) AS pending_days 
+       FROM leave_requests 
+       WHERE user_id = ? AND leave_type_id = ? AND status IN ('pending', 'acknowledged') AND YEAR(start_date) = ?`,
+      [req.user.id, leave_type_id, currentYear]
+    );
+    const pendingDays = parseFloat(pendingRows[0].pending_days);
+    const effectiveRemaining = parseFloat(balanceRows[0].remaining_days) - pendingDays;
 
-    if (remainingDays < parsedDays) {
+    if (effectiveRemaining < parsedDays) {
       return res.status(400).json({
         message:
-          `Insufficient leave balance. ` +
-          `Remaining: ${remainingDays} day(s), Requested: ${parsedDays} day(s).`,
+          `Insufficient leave balance (including pending requests). ` +
+          `Remaining: ${effectiveRemaining} day(s), Requested: ${parsedDays} day(s).`,
       });
     }
 
@@ -153,12 +160,7 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       ],
     );
 
-    await pool.query(
-      `UPDATE leave_balances
-       SET used_days = used_days + ?, remaining_days = remaining_days - ?
-       WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-      [parsedDays, parsedDays, req.user.id, leave_type_id, currentYear]
-    );
+    // Do not deduct balance upon submission. Handled in approval phase.
 
     // ── Save uploaded files ──────────────────────────────────────────────────
     if (req.files && req.files.length > 0) {
@@ -238,13 +240,6 @@ router.put("/:id/cancel", verifyToken, async (req, res) => {
     await pool.query(
       "UPDATE leave_requests SET status = 'cancelled' WHERE id = ?",
       [id],
-    );
-
-    await pool.query(
-      `UPDATE leave_balances
-       SET used_days = used_days - ?, remaining_days = remaining_days + ?
-       WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-      [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
     );
 
     await logAction(
@@ -616,6 +611,13 @@ router.put(
         [req.user.id, id],
       );
 
+      await pool.query(
+        `UPDATE leave_balances
+         SET used_days = used_days + ?, remaining_days = remaining_days - ?
+         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
+      );
+
       await logAction(
         req.user.id,
         "request_approved",
@@ -654,9 +656,9 @@ router.put(
 
       const request = rows[0];
 
-      if (request.status !== "pending") {
+      if (request.status !== "pending" && request.status !== "acknowledged") {
         return res.status(400).json({
-          message: `Only pending requests can be rejected. Current status: '${request.status}'.`,
+          message: `Only pending or acknowledged requests can be rejected. Current status: '${request.status}'.`,
         });
       }
 
@@ -667,13 +669,6 @@ router.put(
          SET status = 'rejected', approved_by = ?, reject_reason = ?
          WHERE id = ?`,
         [req.user.id, reject_reason ?? null, id],
-      );
-
-      await pool.query(
-        `UPDATE leave_balances
-         SET used_days = used_days - ?, remaining_days = remaining_days + ?
-         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
       );
 
       await logAction(
@@ -731,14 +726,6 @@ router.put(
          SET status = 'cancelled', reject_reason = ?
          WHERE id = ?`,
         [cancel_reason || "Cancelled by user", id],
-      );
-
-      // Restore balance
-      await pool.query(
-        `UPDATE leave_balances
-         SET used_days = used_days - ?, remaining_days = remaining_days + ?
-         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
       );
 
       await logAction(
