@@ -265,7 +265,6 @@ export default function EmployeeProfile({ onNavigate }) {
       <Header
         activePage="employee"
         onNavigate={onNavigate}
-        navItems={adminNavItems}
       />
 
       <input

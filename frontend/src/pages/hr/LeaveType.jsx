@@ -17,26 +17,14 @@ import {
 } from 'lucide-react'
 import Header from '../../components/Header'
 import api from '../../services/api'
-import { useAuth } from '../../contexts/AuthContext'
+
 
 export default function LeaveType({ onNavigate }) {
-  const { user } = useAuth()
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const adminNavItems = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'employee', label: 'Employee' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'leave-type', label: 'Leave Type' }
-  ]
-
-  const adminProfile = user || {
-    full_name: 'Admin User',
-    role: 'Global HR Manager'
-  }
 
   const [leaveTypes, setLeaveTypes] = useState([])
 
@@ -169,8 +157,8 @@ export default function LeaveType({ onNavigate }) {
       service: leave.service,
       icon: leave.iconName,
       color: leave.colorType,
-      reqManager: true, // Mocked for now if not in DB
-      carryover: false, // Mocked
+      reqManager: true,
+      carryover: false,
       reqAttachment: leave.reqAttachment
     })
     setEditingId(leave.id)
@@ -235,7 +223,6 @@ export default function LeaveType({ onNavigate }) {
       <Header
         activePage="leave-type"
         onNavigate={onNavigate}
-        navItems={adminNavItems}
       />
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">

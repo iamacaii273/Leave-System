@@ -24,7 +24,7 @@ export default function HrApp() {
       <Route path="employee/:id" element={<EmployeeProfile onNavigate={handleNavigate} />} />
       <Route path="reports" element={<Reports onNavigate={handleNavigate} />} />
       <Route path="leave-type" element={<LeaveType onNavigate={handleNavigate} />} />
-      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} navItems={[{ id: "dashboard", label: "Dashboard" }, { id: "employee", label: "Employee" }, { id: "reports", label: "Reports" }, { id: "leave-type", label: "Leave Type" }]} />} />
+      <Route path="settings" element={<Settings onNavigate={handleNavigate} HeaderComponent={Header} />} />
       <Route path="/" element={<Navigate to="dashboard" replace />} />
     </Routes>
   )

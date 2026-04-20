@@ -4,7 +4,6 @@ import { ChevronDown, CheckCircle, Bell, Settings, User, Briefcase, Lock, UserPl
 import api from "../../services/api"
 import Header from "../../components/Header"
 
-// Hardcoded DB Mappings
 const ROLES = [
   { id: 'rl000001-0000-0000-0000-000000000001', name: 'Employee' },
   { id: 'rl000001-0000-0000-0000-000000000002', name: 'Manager' },

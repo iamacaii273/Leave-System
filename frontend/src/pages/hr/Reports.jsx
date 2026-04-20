@@ -229,7 +229,6 @@ export default function Reports({ onNavigate }) {
       <Header
         activePage="reports"
         onNavigate={onNavigate}
-        navItems={adminNavItems}
       />
 
       <main className="max-w-5xl mx-auto px-6 pt-12 w-full flex-grow flex flex-col gap-8">
