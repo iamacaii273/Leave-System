@@ -78,6 +78,25 @@ router.post(
         [id],
       );
 
+      // Auto-provision balances for all active users so that Reports and Employee Lists reflect it immediately
+      const currentYear = new Date().getFullYear();
+      const [users] = await pool.query(
+        "SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE u.is_active = 1 AND r.name = 'Employee'"
+      );
+      if (users.length > 0) {
+        const defaultDays = default_days_per_year ?? 0;
+        const inserts = users.map(u => [
+          uuidv4(), u.id, id, currentYear, defaultDays, 0, defaultDays
+        ]);
+        
+        await pool.query(
+          `INSERT INTO leave_balances
+             (id, user_id, leave_type_id, year, total_days, used_days, remaining_days)
+           VALUES ?`,
+          [inserts]
+        );
+      }
+
       res.status(201).json({
         message: "Leave type created successfully.",
         leaveType: created[0],

@@ -122,7 +122,8 @@ export default function Dashboard({ onNavigate }) {
               title={bal.leave_type_name} 
               used={bal.used_days} 
               total={bal.total_days} 
-              variant={getVariantType(bal.leave_type_name)} 
+              colorType={bal.color_type}
+              iconName={bal.icon_name}
             />
           ))}
         </div>

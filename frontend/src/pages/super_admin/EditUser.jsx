@@ -7,7 +7,7 @@ import Header from "../../components/Header"
 const ROLES = [
   { id: 'rl000001-0000-0000-0000-000000000001', name: 'Employee' },
   { id: 'rl000001-0000-0000-0000-000000000002', name: 'Manager' },
-  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR Admin' }
+  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR' }
 ];
 
 const POSITIONS = [
@@ -155,14 +155,14 @@ export default function EditUser({ onNavigate }) {
 
   // Privilege descriptions based on role
   const privilegeDesc = {
-    'HR Admin': { title: 'HR Admin', desc: `As an HR Admin, ${form.firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
-    'HR': { title: 'HR Admin', desc: `As an HR Admin, ${form.firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
+    'HR': { title: 'HR', desc: `As an HR, ${form.firstName} can manage employee records, approve leave requests, and view payroll summaries.` },
     'Manager': { title: 'Manager', desc: `As a Manager, ${form.firstName} can approve team leave requests, view team reports, and manage direct reports.` },
     'Employee': { title: 'Employee', desc: `As an Employee, ${form.firstName} can submit leave requests, view their own leave balance, and update personal information.` },
     'Super Admin': { title: 'Super Admin', desc: `As a Super Admin, ${form.firstName} has full system access including user management, system configuration, and all administrative functions.` },
   }
 
-  const priv = privilegeDesc[form.role] || privilegeDesc['Employee']
+  const currentRoleName = ROLES.find(r => r.id === form.role)?.name || 'Employee'
+  const priv = privilegeDesc[currentRoleName] || privilegeDesc['Employee']
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">

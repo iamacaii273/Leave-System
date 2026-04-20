@@ -69,6 +69,8 @@ router.get('/me', verifyToken, async (req, res) => {
          lb.user_id,
          lb.leave_type_id,
          lt.name  AS leave_type_name,
+         lt.color_type,
+         lt.icon_name,
          lb.year,
          lb.total_days,
          lb.used_days,
@@ -121,12 +123,39 @@ router.get(
         return res.status(404).json({ message: 'User not found.' })
       }
 
+      // Auto provision missing balances for this user for the given year
+      const [userHireRow] = await pool.query('SELECT hire_date FROM users WHERE id = ?', [userId]);
+      let serviceMonths = 0;
+      if (userHireRow.length > 0 && userHireRow[0].hire_date) {
+        const hireDate = new Date(userHireRow[0].hire_date);
+        const now = new Date();
+        serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+      }
+      
+      const [activeTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1');
+      const [existingBalances] = await pool.query('SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?', [userId, year]);
+      const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
+      
+      const missingTypes = activeTypes.filter(t => !existingTypeIds.has(t.id));
+      
+      if (missingTypes.length > 0) {
+        const inserts = missingTypes.map(t => [
+          uuidv4(), userId, t.id, year, t.default_days_per_year, 0, t.default_days_per_year,
+        ]);
+        await pool.query(
+          `INSERT INTO leave_balances (id, user_id, leave_type_id, year, total_days, used_days, remaining_days) VALUES ?`,
+          [inserts]
+        );
+      }
+
       const [rows] = await pool.query(
         `SELECT
            lb.id,
            lb.user_id,
            lb.leave_type_id,
            lt.name  AS leave_type_name,
+           lt.color_type,
+           lt.icon_name,
            lb.year,
            lb.total_days,
            lb.used_days,
@@ -233,6 +262,8 @@ router.post(
            lb.user_id,
            lb.leave_type_id,
            lt.name  AS leave_type_name,
+           lt.color_type,
+           lt.icon_name,
            lb.year,
            lb.total_days,
            lb.used_days,
@@ -313,6 +344,8 @@ router.put(
            lb.user_id,
            lb.leave_type_id,
            lt.name  AS leave_type_name,
+           lt.color_type,
+           lt.icon_name,
            lb.year,
            lb.total_days,
            lb.used_days,

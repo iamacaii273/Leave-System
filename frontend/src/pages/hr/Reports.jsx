@@ -85,6 +85,7 @@ export default function Reports({ onNavigate }) {
   const [isLoading, setIsLoading] = useState(true)
   const [summaryData, setSummaryData] = useState([])
   const [balancesData, setBalancesData] = useState([])
+  const [leaveTypeColumns, setLeaveTypeColumns] = useState([]) // dynamic columns
   const [historyData, setHistoryData] = useState([])
 
   // Close picker when clicking outside
@@ -114,27 +115,28 @@ export default function Reports({ onNavigate }) {
           total: parseFloat(s.total_allocated_days) || 0
         }));
 
+        // Fetch leave types to build dynamic columns
+        const ltRes = await api.get("/leave-types");
+        const leaveTypes = ltRes.data.leaveTypes || [];
+        const ltNames = leaveTypes.map(lt => lt.name); // ordered list of column names
+        setLeaveTypeColumns(ltNames);
+
         const loadedBalances = {};
         for (const emp of balRes.data.employees) {
-          const b = { sick: null, personal: null, annual: null };
+          // Build a map: leave_type_name -> "used / total" string
+          const balMap = {};
           for (const bal of emp.balances) {
-            const ltn = bal.leave_type_name.toLowerCase();
             const usedStr = formatDays(bal.used_days);
             const totalStr = formatDays(bal.total_days);
-            if (ltn.includes("sick")) b.sick = `${usedStr} / ${totalStr}`;
-            else if (ltn.includes("personal")) b.personal = `${usedStr} / ${totalStr}`;
-            else if (ltn.includes("annual") || ltn.includes("vacation")) b.annual = `${usedStr} / ${totalStr}`;
+            balMap[bal.leave_type_name] = `${usedStr} / ${totalStr}`;
           }
           loadedBalances[emp.user_id] = {
             id: emp.user_id,
             name: emp.full_name,
             initial: getInitials(emp.full_name),
             bg: getUserColor(emp.user_id),
-            // Example derived specialBadge calculation
-            specialBadge: false ? "NEW HIRE" : null,
-            sick: b.sick || "0 / 0",
-            personal: b.personal || "0 / 0",
-            annual: b.annual || "0 / 0"
+            specialBadge: null,
+            balMap, // all balances keyed by leave type name
           };
         }
 
@@ -286,23 +288,15 @@ export default function Reports({ onNavigate }) {
               <thead>
                 <tr className="bg-[#e2e8f0]">
                   <th className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase">Employee Name</th>
-                  <th className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">Sick Leave<br />(Used/Total)</th>
-                  <th className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">Personal Leave<br />(Used/Total)</th>
-                  <th className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">Annual Vacation<br />(Used/Total)</th>
+                  {leaveTypeColumns.map(name => (
+                    <th key={name} className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">
+                      {name}<br />(Used/Total)
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {paginatedBalances.map((row, idx) => {
-                  const getQuotaStyle = (quota) => {
-                    if (!quota) return "text-[#475569]";
-                    const parts = quota.split(" / ");
-                    if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
-                      if (parts[0].trim() === "0") return "text-red-800 font-bold";
-                      return "text-red-600 font-bold";
-                    }
-                    return "text-[#475569]";
-                  };
-
                   return (
                     <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
                       <td className="py-5 px-8">
@@ -313,25 +307,29 @@ export default function Reports({ onNavigate }) {
                           <div className="flex flex-col">
                             <span className="font-bold text-[14px] text-[#3f4a51]">{row.name}</span>
                             {row.specialBadge && (
-                              <span
-                                className="font-bold text-red-600 mt-0.5 tracking-widest uppercase opacity-90"
-                                style={{ fontSize: "9px" }}
-                              >
+                              <span className="font-bold text-red-600 mt-0.5 tracking-widest uppercase opacity-90" style={{ fontSize: "9px" }}>
                                 {row.specialBadge}
                               </span>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="py-5 px-8">
-                        <span className={`text-[14px] font-medium ${getQuotaStyle(row.sick)}`}>{row.sick}</span>
-                      </td>
-                      <td className="py-5 px-8">
-                        <span className={`text-[14px] font-medium ${getQuotaStyle(row.personal)}`}>{row.personal}</span>
-                      </td>
-                      <td className="py-5 px-8">
-                        <span className={`text-[14px] font-medium ${getQuotaStyle(row.annual)}`}>{row.annual}</span>
-                      </td>
+                      {leaveTypeColumns.map(name => {
+                        const val = row.balMap?.[name] || "0 / 0";
+                        const getQuotaStyle = (quota) => {
+                          const parts = quota.split(" / ");
+                          if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
+                            if (parts[0].trim() === "0") return "text-red-800 font-bold";
+                            return "text-red-600 font-bold";
+                          }
+                          return "text-[#475569]";
+                        };
+                        return (
+                          <td key={name} className="py-5 px-8">
+                            <span className={`text-[14px] font-medium ${getQuotaStyle(val)}`}>{val}</span>
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}

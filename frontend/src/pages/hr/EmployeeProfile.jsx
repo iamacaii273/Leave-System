@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  PenLine,
-  Trash2,
-  UserCog,
-  Mail,
-  Briefcase,
-  Calendar as CalendarIcon,
-  Umbrella,
-  Users,
-  Thermometer,
-  Folder,
-  X,
-  Check,
-  Shield,
-  Phone
-} from "lucide-react"
+import * as Icons from "lucide-react"
+import { Building, Mail, Phone, Calendar as CalendarIcon, Briefcase, UserCog, User, Shield, PenLine, Bell, X, UserPlus, CheckCircle, ChevronDown, Image as ImageIcon, Trash2, Umbrella, Thermometer, Users as UsersIcon, Check, Plane, Smile, HeartHandshake, PartyPopper, MoreHorizontal } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
+
+// Color name → hex background (mirrors LeaveType.jsx colorStyles)
+const COLOR_MAP = {
+  blue:   "#a3dfff",
+  pink:   "#ffafe3",
+  orange: "#fac47f",
+  green:  "#B1EFD8",
+}
+
+// Icon name (stored in DB lowercase) → Lucide component
+const ICON_MAP = {
+  umbrella:    Umbrella,
+  thermometer: Thermometer,
+  user:        UsersIcon,
+  plane:       Plane,
+  smile:       Smile,
+  heart:       HeartHandshake,
+  party:       PartyPopper,
+  more:        MoreHorizontal,
+}
 
 function getInitials(name = "") {
   return name
@@ -380,14 +386,14 @@ export default function EmployeeProfile({ onNavigate }) {
                   onClick={() => setShowDeleteModal(true)}
                   className="!bg-[#ff6b6b] hover:bg-[#fa5a5a] text-white rounded-[20px] !px-6 !py-4 flex items-center gap-3 font-bold text-[16px] shadow-sm transition-colors w-44 justify-center leading-tight"
                 >
-                  <Trash2 size={20} />
+                  <Icons.Trash2 size={20} />
                   Mark as<br />Resigned
                 </button>
                 <button
                   onClick={() => setShowAccessModal(true)}
                   className="!bg-[#757d7b] hover:bg-[#656d6b] text-white rounded-[20px] !px-6 !py-4 flex items-center gap-3 font-bold text-[16px] shadow-sm transition-colors w-44 justify-center leading-tight"
                 >
-                  <UserCog size={20} />
+                  <Icons.UserCog size={20} />
                   Manage<br />Access
                 </button>
               </div>
@@ -395,54 +401,56 @@ export default function EmployeeProfile({ onNavigate }) {
 
             <div className="grid lg:grid-cols-[1.5fr_1fr] gap-8">
               <div className="flex flex-col gap-8">
-                <div className={`grid ${balances.length > 2 ? "grid-cols-3" : balances.length === 2 ? "grid-cols-2" : "grid-cols-1"} gap-6`}>
+                <div className="flex flex-wrap gap-5">
                   {balances.length === 0 ? (
-                    <div className="bg-white rounded-[32px] p-8 shadow-sm">
+                    <div className="bg-white rounded-[32px] p-8 shadow-sm w-full">
                       <p className="text-[16px] font-bold text-[#64748b]">No leave balance records for this year.</p>
                     </div>
                   ) : (
                     balances.map((balance) => {
-                      const theme = getBalanceTheme(balance.leave_type_name)
-                      const leaveKey = getBalanceKey(balance.leave_type_name)
-                      const Icon = theme.Icon
+                      const Icon = ICON_MAP[balance.icon_name] || Umbrella
+                      const bgColor = COLOR_MAP[balance.color_type] || "#e2e8f0"
+                      const leaveKey = balance.id
+                      const textColor = "#2d3748"
 
                       return (
-                        <div key={balance.id} className={`${theme.cardClass} rounded-[40px] p-6 shadow-sm relative overflow-hidden aspect-[4/5] flex flex-col justify-center`}>
+                        <div key={balance.id} className="rounded-[40px] p-6 shadow-sm relative overflow-hidden flex flex-col justify-center" style={{ backgroundColor: bgColor, width: "185px", minHeight: "220px" }}>
                           {editingLeave === leaveKey ? (
                             <div className="absolute top-5 right-5 flex gap-1.5 z-10">
-                              <button onClick={saveEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#2c7356] hover:bg-white/80 transition-colors"><Check size={14} /></button>
-                              <button onClick={cancelEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#855913] hover:bg-white/80 transition-colors"><X size={14} /></button>
+                              <button onClick={saveEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#2c7356] hover:bg-white/80 transition-colors"><Icons.Check size={14} /></button>
+                              <button onClick={cancelEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#855913] hover:bg-white/80 transition-colors"><Icons.X size={14} /></button>
                             </div>
                           ) : (
                             <button
                               onClick={() => startEditLeave(balance.id, leaveKey, balance.total_days)}
                               className="absolute top-6 right-6 w-8 h-8 bg-white/40 rounded-full flex items-center justify-center hover:bg-white/60 transition-colors"
                             >
-                              <PenLine size={14} />
+                              <Icons.PenLine size={14} />
                             </button>
                           )}
-                          <Icon className={`absolute bottom-4 right-4 w-28 h-28 ${theme.iconClass} opacity-30 -rotate-12`} />
+                          <Icon className="absolute bottom-2 right-2 w-20 h-20 opacity-20 -rotate-12" style={{ color: textColor }} />
                           <div className="relative z-[1] px-2 mb-2">
-                            <h3 className={`font-bold text-[17px] font-fredoka ${theme.textClass} mb-4`}>{balance.leave_type_name}</h3>
+                            <h3 className="font-bold text-[14px] font-fredoka mb-3" style={{ color: textColor }}>{balance.leave_type_name}</h3>
                             <div className="flex items-baseline gap-1 mb-6">
-                              <span className={`text-[64px] font-fredoka font-bold ${theme.textClass} leading-none`}>
+                              <span className="text-[48px] font-fredoka font-bold leading-none" style={{ color: textColor }}>
                                 {formatDays(balance.used_days)}
                               </span>
-                              <span className={`text-[18px] font-bold ${theme.textClass} opacity-80`}>
+                              <span style={{ color: textColor, fontSize: "14px", fontWeight: "bold", opacity: 0.8 }}>
                                 / {editingLeave === leaveKey ? (
                                   <input
                                     type="number"
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && saveEditLeave()}
-                                    className={`w-16 bg-white/60 rounded-lg px-2 py-0.5 text-[16px] font-bold ${theme.textClass} outline-none text-center`}
+                                    className="w-16 bg-white/60 rounded-lg px-2 py-0.5 text-[16px] font-bold outline-none text-center"
+                                    style={{ color: textColor }}
                                     autoFocus
                                   />
                                 ) : `${formatDays(balance.total_days)} days`}
                               </span>
                             </div>
-                            <div className={`w-full ${theme.trackClass} h-2.5 rounded-full overflow-hidden`}>
-                              <div className={`${theme.fillClass} h-full rounded-full transition-all`} style={{ width: getBarWidth(balance.used_days, balance.total_days) }}></div>
+                            <div className="w-full h-2 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: getBarWidth(balance.used_days, balance.total_days), backgroundColor: "rgba(0,0,0,0.6)" }}></div>
                             </div>
                           </div>
                         </div>
@@ -614,7 +622,7 @@ export default function EmployeeProfile({ onNavigate }) {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "#e9eff5" }}>
-                  <Shield size={22} className="text-[#4c6367]" />
+                  <Icons.Shield size={22} className="text-[#4c6367]" />
                 </div>
                 <div>
                   <h3 className="text-[22px] font-fredoka font-bold text-[#1f3747]">Manage Access</h3>
@@ -622,7 +630,7 @@ export default function EmployeeProfile({ onNavigate }) {
                 </div>
               </div>
               <button onClick={() => setShowAccessModal(false)} className="w-8 h-8 rounded-full bg-[#f4f7f9] flex items-center justify-center text-[#64748b] hover:bg-[#e2e8f0] transition-colors">
-                <X size={16} />
+                <Icons.X size={16} />
               </button>
             </div>
 

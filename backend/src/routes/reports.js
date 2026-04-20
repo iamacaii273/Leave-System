@@ -142,12 +142,20 @@ router.get("/leave-summary", ...guard, async (req, res) => {
          SUM(CASE WHEN lr.status = 'approved' THEN 1 ELSE 0 END) AS approved_requests,
          COALESCE(SUM(CASE WHEN lr.status = 'approved' THEN lr.total_days ELSE 0 END), 0) AS total_days_used,
          (
-           SELECT COALESCE(SUM(total_days), 0)
+           SELECT COALESCE(SUM(lb.total_days), 0)
            FROM leave_balances lb
-           WHERE lb.leave_type_id = lt.id AND lb.year = ?
+           JOIN users u ON lb.user_id = u.id
+           JOIN roles r ON u.role_id = r.id
+           WHERE lb.leave_type_id = lt.id AND lb.year = ? AND r.name = 'Employee'
          ) AS total_allocated_days
        FROM leave_types lt
-       LEFT JOIN leave_requests lr ON lr.leave_type_id = lt.id AND YEAR(lr.submitted_at) = ? AND lr.status = 'approved'
+       LEFT JOIN (
+           SELECT lr.* 
+           FROM leave_requests lr 
+           JOIN users u ON lr.user_id = u.id 
+           JOIN roles r ON u.role_id = r.id 
+           WHERE r.name = 'Employee' AND YEAR(lr.submitted_at) = ? AND lr.status = 'approved'
+       ) lr ON lr.leave_type_id = lt.id
        WHERE lt.is_active = 1
        GROUP BY lt.id, lt.name
        ORDER BY lt.name ASC`,

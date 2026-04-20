@@ -7,7 +7,7 @@ import Header from "../../components/Header"
 const ROLES = [
   { id: 'rl000001-0000-0000-0000-000000000001', name: 'Employee' },
   { id: 'rl000001-0000-0000-0000-000000000002', name: 'Manager' },
-  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR Admin' }
+  { id: 'rl000001-0000-0000-0000-000000000003', name: 'HR' }
 ];
 
 const POSITIONS = [
