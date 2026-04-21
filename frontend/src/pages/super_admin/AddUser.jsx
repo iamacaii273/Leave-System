@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ChevronDown, CheckCircle, Bell, Settings, User, Briefcase, Lock, UserPlus } from "lucide-react"
 import api from "../../services/api"
@@ -35,10 +35,29 @@ export default function AddUser({ onNavigate }) {
     phone: '',
     role: 'rl000001-0000-0000-0000-000000000001',
     position: 'ps000001-0000-0000-0000-000000000001',
+    department: '',
     password: '',
     confirmPassword: '',
     hireDate: ''
   })
+
+  const [departments, setDepartments] = useState([])
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const { data } = await api.get('/departments')
+        const depts = data.departments || []
+        setDepartments(depts)
+        if (depts.length > 0) {
+          setForm(p => ({ ...p, department: depts[0].id }))
+        }
+      } catch (err) {
+        console.error("Failed to fetch departments:", err)
+      }
+    }
+    fetchDepts()
+  }, [])
 
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -73,6 +92,7 @@ export default function AddUser({ onNavigate }) {
         phone: form.phone ? `${form.phonePrefix} ${form.phone}` : null,
         role_id: form.role,
         position_id: form.position,
+        department_id: form.department,
         hire_date: form.hireDate || new Date().toISOString().split('T')[0]
       }
 
@@ -205,6 +225,22 @@ export default function AddUser({ onNavigate }) {
                 >
                   {POSITIONS.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <select
+                  value={form.department}
+                  onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))}
+                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
+                >
+                  {departments.length === 0 && <option value="">No departments available</option>}
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
                 <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />

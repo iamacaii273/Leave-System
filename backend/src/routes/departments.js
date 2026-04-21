@@ -39,6 +39,26 @@ router.get("/all", verifyToken, requireRole("Super Admin"), async (req, res) => 
   }
 });
 
+// ─── GET /hr-assigned ──────────────────────────────────────────────────────
+// Get mapped departments for the currently logged-in HR user
+// Protected: HR role only.
+router.get("/hr-assigned", verifyToken, requireRole("HR"), async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT d.id, d.name 
+       FROM departments d
+       JOIN hr_departments hd ON d.id = hd.department_id
+       WHERE hd.user_id = ? AND d.is_active = 1
+       ORDER BY d.name ASC`,
+      [req.user.id]
+    );
+    res.json({ departments: rows });
+  } catch (err) {
+    console.error("GET /departments/hr-assigned error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+
 // ─── POST / ────────────────────────────────────────────────────────────────
 // Create a new department.
 // Protected: Super Admin only.

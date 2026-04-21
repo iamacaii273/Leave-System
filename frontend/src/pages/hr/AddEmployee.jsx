@@ -23,12 +23,14 @@ export default function AddEmployee({ onNavigate }) {
     hire_date: '',
     role_id: '',
     position_id: '',
+    department_id: '',
     password: '',
     confirmPassword: ''
   })
 
   const [roles, setRoles] = useState([])
   const [positions, setPositions] = useState([])
+  const [hrDepartments, setHrDepartments] = useState([])
   const [filteredPositions, setFilteredPositions] = useState([])
   const [showSuccess, setShowSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -39,15 +41,22 @@ export default function AddEmployee({ onNavigate }) {
         const token = localStorage.getItem('token')
         const headers = { 'Authorization': `Bearer ${token}` }
         
-        const [rolesRes, posRes] = await Promise.all([
+        const [rolesRes, posRes, deptRes] = await Promise.all([
           fetch('http://localhost:5000/api/metadata/roles', { headers }).then(r => r.json()),
-          fetch('http://localhost:5000/api/metadata/positions', { headers }).then(r => r.json())
+          fetch('http://localhost:5000/api/metadata/positions', { headers }).then(r => r.json()),
+          fetch('http://localhost:5000/api/departments/hr-assigned', { headers }).then(r => r.json())
         ])
         
         const allowedRoles = (rolesRes.roles || []).filter(r => r.name === 'Employee' || r.name === 'Manager')
         setRoles(allowedRoles)
         setPositions(posRes.positions || [])
         
+        const depts = deptRes.departments || []
+        setHrDepartments(depts)
+        if (depts.length > 0) {
+          updateField('department_id', depts[0].id)
+        }
+
         if (allowedRoles.length > 0) {
           updateField('role_id', allowedRoles[0].id)
         }
@@ -91,6 +100,7 @@ export default function AddEmployee({ onNavigate }) {
     form.hire_date &&
     form.role_id &&
     form.position_id &&
+    form.department_id &&
     form.password.trim() &&
     form.confirmPassword.trim() &&
     form.password === form.confirmPassword
@@ -114,7 +124,8 @@ export default function AddEmployee({ onNavigate }) {
           hire_date: form.hire_date,
           password: form.password,
           role_id: form.role_id,
-          position_id: form.position_id
+          position_id: form.position_id,
+          department_id: form.department_id
         })
       })
 
@@ -237,6 +248,24 @@ export default function AddEmployee({ onNavigate }) {
                     </select>
                     <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
                   </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-bold text-[#64748b] ml-1">Department <span className="text-red-400">*</span></label>
+                  {hrDepartments.length === 1 ? (
+                    <div className={`${inputClass} bg-[#e2e8f0] text-[#64748b] cursor-not-allowed`}>
+                      {hrDepartments[0].name}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select value={form.department_id} onChange={(e) => updateField('department_id', e.target.value)} className={`${inputClass} appearance-none cursor-pointer`}>
+                        {hrDepartments.length === 0 && <option value="">No departments assigned</option>}
+                        {hrDepartments.map(d => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
