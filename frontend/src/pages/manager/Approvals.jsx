@@ -526,8 +526,8 @@ export default function Approvals({ onNavigate }) {
           </p>
         </div>
 
-        {/* ── Filter Tabs ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        {/* [COMMENTED OUT] Filter Tabs — removed since all requests are now pending only */}
+        {/* <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
           {FILTERS.map(f => {
             const count    = f.key === "all" ? dateFiltered.length : countByStatus(f.key)
             const isActive = filter === f.key
@@ -570,7 +570,6 @@ export default function Approvals({ onNavigate }) {
             )
           })}
 
-          {/* Date filter chip */}
           {selectedDate && (
             <span style={{
               backgroundColor: '#dce8f5',
@@ -591,7 +590,7 @@ export default function Approvals({ onNavigate }) {
               >×</button>
             </span>
           )}
-        </div>
+        </div> */}
 
 
 
