@@ -94,13 +94,16 @@ export default function History({ onNavigate }) {
     setCurrentPage(1)
   }, [filter, appliedRange])
 
-  const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled", "Acknowledged"]
+  // [COMMENTED OUT] Removed "Acknowledged" filter — unified into approve flow
+  // const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled", "Acknowledged"]
+  const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled"]
 
   const statusColors = {
     Approved: { bg: "#0cf1aa", text: "#185b48" },
     Pending: { bg: "#fee481", text: "#6b5413" },
     Rejected: { bg: "#f56464", text: "#570008" },
     Cancelled: { bg: "#e2e8f0", text: "#475569" },
+    // [COMMENTED OUT] Acknowledged status color kept for backward compat display
     Acknowledged: { bg: "#93c5fd", text: "#1e3a8a" },
     default: { bg: "#eef2f9", text: "#3f4a51" }
   }

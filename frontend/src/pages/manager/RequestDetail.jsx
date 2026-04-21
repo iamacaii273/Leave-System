@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import {
-  Umbrella, CheckCircle, XCircle,
+  Umbrella, Thermometer, Users, CheckCircle, XCircle,
   ArrowLeft, Calendar, FileText, File, Mail, Phone,
   Briefcase, CalendarDays, ChevronLeft, ChevronRight,
 } from "lucide-react"
@@ -466,7 +466,7 @@ export default function RequestDetail({ onNavigate }) {
               style={{ width: "100%", padding: "14px 18px", background: "#f4f7fb", border: "none", borderRadius: "16px", fontSize: "14px", color: "#3f4a51", resize: "none", outline: "none", marginBottom: "18px", boxSizing: "border-box", fontFamily: "inherit" }}
             />
             <div style={{ display: "flex", gap: "14px" }}>
-              {/* Approve / Confirm Approval */}
+              {/* Approve */}
               <button
                 onClick={handleApprove}
                 disabled={!!actionLoading}
@@ -474,10 +474,13 @@ export default function RequestDetail({ onNavigate }) {
                 onMouseLeave={() => setAppHover(false)}
                 style={{
                   flex: 1, height: "52px", borderRadius: "9999px", border: "none",
-                  backgroundColor: request.status === "acknowledged"
-                    ? (appHover ? "#60a5fa" : "#93c5fd")
-                    : (appHover ? "#6ee7b7" : "#bbf7d0"),
-                  color: request.status === "acknowledged" ? "#1e3a8a" : "#065f46",
+                  // [COMMENTED OUT] Previously had acknowledge-specific blue styling
+                  // backgroundColor: request.status === "acknowledged"
+                  //   ? (appHover ? "#60a5fa" : "#93c5fd")
+                  //   : (appHover ? "#6ee7b7" : "#bbf7d0"),
+                  // color: request.status === "acknowledged" ? "#1e3a8a" : "#065f46",
+                  backgroundColor: appHover ? "#6ee7b7" : "#bbf7d0",
+                  color: "#065f46",
                   fontSize: "15px", fontWeight: 800,
                   cursor: "pointer", display: "flex", alignItems: "center",
                   justifyContent: "center", gap: "8px",
@@ -485,43 +488,43 @@ export default function RequestDetail({ onNavigate }) {
                   transition: "background-color 0.18s, transform 0.12s",
                   transform: appHover && !actionLoading ? "translateY(-1px)" : "none",
                   boxShadow: appHover && !actionLoading
-                    ? request.status === "acknowledged"
-                      ? "0 6px 20px rgba(96,165,250,0.45)"
-                      : "0 6px 20px rgba(110,231,183,0.5)"
+                    ? "0 6px 20px rgba(110,231,183,0.5)"
                     : "none",
                 }}
               >
                 <CheckCircle size={18} strokeWidth={2.5} />
                 {actionLoading === "approve"
                   ? "Approving…"
-                  : request.status === "acknowledged"
-                  ? "Confirm Approval"
+                  // [COMMENTED OUT] Previously showed "Confirm Approval" for acknowledged requests
+                  // : request.status === "acknowledged"
+                  // ? "Confirm Approval"
                   : "Approve Request"}
               </button>
 
-              {/* Reject — hidden for acknowledged requests */}
-              {request.status !== "acknowledged" && (
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={!!actionLoading}
-                  onMouseEnter={() => setRejHover(true)}
-                  onMouseLeave={() => setRejHover(false)}
-                  style={{
-                    flex: 1, height: "52px", borderRadius: "9999px", border: "none",
-                    backgroundColor: rejHover ? "#f87171" : "#fda4af",
-                    color: "#7f1d1d", fontSize: "15px", fontWeight: 800,
-                    cursor: "pointer", display: "flex", alignItems: "center",
-                    justifyContent: "center", gap: "8px",
-                    opacity: actionLoading ? 0.6 : 1,
-                    transition: "background-color 0.18s, transform 0.12s",
-                    transform: rejHover && !actionLoading ? "translateY(-1px)" : "none",
-                    boxShadow: rejHover && !actionLoading ? "0 6px 20px rgba(248,113,113,0.45)" : "none",
-                  }}
-                >
-                  <XCircle size={18} strokeWidth={2.5} />
-                  Reject Request
-                </button>
-              )}
+              {/* Reject — now always shown for all actionable statuses */}
+              {/* [COMMENTED OUT] Previously hidden for acknowledged requests */}
+              {/* {request.status !== "acknowledged" && ( */}
+              <button
+                onClick={() => setShowRejectModal(true)}
+                disabled={!!actionLoading}
+                onMouseEnter={() => setRejHover(true)}
+                onMouseLeave={() => setRejHover(false)}
+                style={{
+                  flex: 1, height: "52px", borderRadius: "9999px", border: "none",
+                  backgroundColor: rejHover ? "#f87171" : "#fda4af",
+                  color: "#7f1d1d", fontSize: "15px", fontWeight: 800,
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: "8px",
+                  opacity: actionLoading ? 0.6 : 1,
+                  transition: "background-color 0.18s, transform 0.12s",
+                  transform: rejHover && !actionLoading ? "translateY(-1px)" : "none",
+                  boxShadow: rejHover && !actionLoading ? "0 6px 20px rgba(248,113,113,0.45)" : "none",
+                }}
+              >
+                <XCircle size={18} strokeWidth={2.5} />
+                Reject Request
+              </button>
+              {/* )} */}
             </div>
             <p style={{ textAlign: "center", fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
               An automated notification will be sent to the employee
