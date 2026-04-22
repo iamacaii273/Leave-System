@@ -33,6 +33,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
             email: u.email || '',
             role: u.role || 'Employee',
             status: u.is_active === 1 ? 'Active' : 'Resigned',
+            department: u.department || 'No Dept',
             img: null,
             initial: initials || 'XX',
             initialBg: colors[i % colors.length]
@@ -175,8 +176,9 @@ export default function SuperAdminDashboard({ onNavigate }) {
         {/* Registry Table */}
         <div className="bg-white rounded-[32px] shadow-sm overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[2.5fr_1fr_1fr_0.8fr] gap-4 px-8 py-5 bg-[#f8fafb] border-b border-[#eef2f5]">
+          <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr] gap-4 px-8 py-5 bg-[#f8fafb] border-b border-[#eef2f5]">
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">User Profile</span>
+            <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Department</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Access Role</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Status</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Management</span>
@@ -195,7 +197,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
               </div>
             ) : paginatedUsers.map((user, idx) => (
               <div key={user.id}>
-                <div className="grid grid-cols-[2.5fr_1fr_1fr_0.8fr] gap-4 items-center px-8 py-5 hover:bg-[#f9fafb] transition-colors">
+                <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr] gap-4 items-center px-8 py-5 hover:bg-[#f9fafb] transition-colors">
                   {/* User Profile */}
                   <div className="flex items-center gap-4">
                     {user.img ? (
@@ -209,6 +211,11 @@ export default function SuperAdminDashboard({ onNavigate }) {
                       <p className="font-bold text-[15px] text-[#323940] mb-0.5">{user.name}</p>
                       <p className="text-[12px] font-medium text-[#94a3b8]">{user.email}</p>
                     </div>
+                  </div>
+
+                  {/* Department */}
+                  <div className="flex justify-center">
+                    <span className="text-[13px] font-bold text-[#4c6367]">{user.department}</span>
                   </div>
 
                   {/* Role Badge */}

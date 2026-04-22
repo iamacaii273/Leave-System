@@ -39,7 +39,9 @@ export default function EditUser({ onNavigate }) {
     password: '',
     confirmPassword: '',
     status: 'Active',
-    hireDate: ''
+    hireDate: '',
+    department: '',
+    managedDepartments: []
   })
 
   const [userData, setUserData] = useState(null)
@@ -48,6 +50,19 @@ export default function EditUser({ onNavigate }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
   const [profileImg, setProfileImg] = useState(null)
+  const [departments, setDepartments] = useState([])
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const { data } = await api.get('/departments')
+        setDepartments(data.departments || [])
+      } catch (err) {
+        console.error("Failed to fetch departments:", err)
+      }
+    }
+    fetchDepts()
+  }, [])
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -78,7 +93,9 @@ export default function EditUser({ onNavigate }) {
           password: '',
           confirmPassword: '',
           status: u.is_active === 1 ? 'Active' : 'Resigned',
-          hireDate: u.hire_date ? u.hire_date.split('T')[0] : ''
+          hireDate: u.hire_date ? u.hire_date.split('T')[0] : '',
+          department: u.department_id || '',
+          managedDepartments: u.managed_department_ids || []
         })
       } catch (err) {
         console.error(err)
@@ -124,6 +141,8 @@ export default function EditUser({ onNavigate }) {
         phone: form.phone ? `${form.phonePrefix} ${form.phone}` : null,
         role_id: form.role,
         position_id: form.position,
+        department_id: form.department,
+        managed_department_ids: form.managedDepartments,
         hire_date: form.hireDate,
         is_active: form.status === 'Active' ? 1 : 0
       }
@@ -344,7 +363,51 @@ export default function EditUser({ onNavigate }) {
                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
                 </div>
               </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select
+                    value={form.department}
+                    onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))}
+                    className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
+                  >
+                    {departments.length === 0 && <option value="">No departments available</option>}
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+                </div>
+              </div>
             </div>
+
+            {/* Managed Departments for Manager/HR */}
+            {(form.role === 'rl000001-0000-0000-0000-000000000002' || form.role === 'rl000001-0000-0000-0000-000000000003') && (
+              <div className="flex flex-col gap-2 bg-[#f8fafb] p-6 rounded-3xl border border-[#edf2f7] mb-10">
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department Access <span className="text-[9px] lowercase italic font-normal">(Managers/HR can manage multiple)</span></label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                  {departments.map(d => (
+                    <label key={d.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#edf2f7] cursor-pointer transition-colors border border-transparent hover:border-[#cbd5e1]">
+                      <input
+                        type="checkbox"
+                        checked={form.managedDepartments.includes(d.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setForm(p => ({
+                            ...p,
+                            managedDepartments: checked
+                              ? [...p.managedDepartments, d.id]
+                              : p.managedDepartments.filter(id => id !== d.id)
+                          }));
+                        }}
+                        className="w-4 h-4 rounded border-[#cbd5e1] text-[#3ea8e5] focus:ring-[#3ea8e5]"
+                      />
+                      <span className="text-[14px] font-bold text-[#323940]">{d.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Access Credentials */}
             <div className="flex items-center gap-3 mb-6 bg-[#f4f7f9] p-4 rounded-2xl">

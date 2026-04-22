@@ -119,7 +119,7 @@ export default function RequestDetail({ onNavigate }) {
   async function handleApprove() {
     setActionLoading("approve")
     try {
-      await api.put(`/leave-requests/${id}/approve`)
+      await api.put(`/leave-requests/${id}/approve`, { manager_note: comment })
       setData(prev => ({ ...prev, request: { ...prev.request, status: "approved" } }))
       setActionDone(true)
     } catch (e) {
@@ -338,10 +338,14 @@ export default function RequestDetail({ onNavigate }) {
             </div>
           </div>
 
-          {request.reject_reason && (
-            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: "#fee2e2", borderLeft: "4px solid #f56464" }}>
-              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#991b1b", marginBottom: "4px" }}>Rejection Reason</p>
-              <p style={{ fontSize: "13px", color: "#991b1b", fontStyle: "italic" }}>{request.reject_reason}</p>
+          {(request.reject_reason || request.manager_note) && !canAct && (
+            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: request.status === "rejected" ? "#fee2e2" : "#f0fdf4", borderLeft: `4px solid ${request.status === "rejected" ? "#f56464" : "#16a34a"}` }}>
+              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: request.status === "rejected" ? "#991b1b" : "#166534", marginBottom: "4px" }}>
+                Manager's {request.status === "rejected" ? "Rejection Reason" : "Note"}
+              </p>
+              <p style={{ fontSize: "13px", color: request.status === "rejected" ? "#991b1b" : "#166534", fontStyle: "italic" }}>
+                {request.reject_reason || request.manager_note}
+              </p>
             </div>
           )}
         </div>
@@ -458,14 +462,18 @@ export default function RequestDetail({ onNavigate }) {
         {/* ── Manager Comment + Actions ── */}
         {canAct && (
           <div style={{ background: "white", borderRadius: "24px", padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-            <p style={{ fontSize: "15px", fontWeight: 800, color: "#2d3e50", marginBottom: "10px" }}>Manager's Comment</p>
-            <textarea
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              placeholder="Add a comment…"
-              rows={3}
-              style={{ width: "100%", padding: "14px 18px", background: "#f4f7fb", border: "none", borderRadius: "16px", fontSize: "14px", color: "#3f4a51", resize: "none", outline: "none", marginBottom: "18px", boxSizing: "border-box", fontFamily: "inherit" }}
-            />
+            {request.status === "acknowledged" && (
+              <>
+                <p style={{ fontSize: "15px", fontWeight: 800, color: "#2d3e50", marginBottom: "10px" }}>Manager's Note</p>
+                <textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Add a note to this approval (optional)…"
+                  rows={3}
+                  style={{ width: "100%", padding: "14px 18px", background: "#f4f7fb", border: "none", borderRadius: "16px", fontSize: "14px", color: "#3f4a51", resize: "none", outline: "none", marginBottom: "18px", boxSizing: "border-box", fontFamily: "inherit" }}
+                />
+              </>
+            )}
             <div style={{ display: "flex", gap: "14px" }}>
               {/* Approve / Confirm Approval */}
               <button

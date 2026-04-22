@@ -6,22 +6,23 @@ import { useNavigate } from "react-router-dom"
 const ROLE_NAV_ITEMS = {
   "Employee": [
     { id: "dashboard", label: "Dashboard" },
-    { id: "request",   label: "Request"   },
-    { id: "history",   label: "History"   },
+    { id: "request", label: "Request" },
+    { id: "history", label: "History" },
   ],
   "Manager": [
     { id: "dashboard", label: "Dashboard" },
     { id: "approvals", label: "Approvals" },
-    { id: "history",   label: "History"   },
+    { id: "history", label: "History" },
   ],
   "HR": [
-    { id: "dashboard",  label: "Dashboard"  },
-    { id: "employee",   label: "Employee"   },
-    { id: "reports",    label: "Reports"    },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "employee", label: "Employee" },
+    { id: "reports", label: "Reports" },
     { id: "leave-type", label: "Leave Type" },
   ],
   "Super Admin": [
     { id: "dashboard", label: "Dashboard" },
+    { id: "departments", label: "Departments" },
   ],
 }
 
@@ -49,11 +50,10 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
               <div key={item.id} className="relative">
                 <button
                   onClick={() => onNavigate && onNavigate(item.id)}
-                  className={`text-[17px] font-bold font-fredoka transition-colors tracking-wide px-2 py-4 ${
-                    activePage === item.id
+                  className={`text-[17px] font-bold font-fredoka transition-colors tracking-wide px-2 py-4 ${activePage === item.id
                       ? "text-[#1e3450]"
                       : "text-[#1e3450] opacity-80 hover:opacity-100"
-                  }`}
+                    }`}
                 >
                   {item.label}
                 </button>
