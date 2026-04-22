@@ -235,7 +235,7 @@ router.post(
     ) {
       return res.status(400).json({
         message:
-          "All fields are required: full_name, email, password, role_id, position_id, department_id, hire_date.",
+          "All fields are required",
       });
     }
 
@@ -306,7 +306,7 @@ router.post(
       if (!baseUsername) baseUsername = 'User';
       let username = baseUsername;
       let counter = 1;
-      
+
       while (true) {
         const [existing] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
         if (existing.length === 0) break;
@@ -336,7 +336,7 @@ router.post(
       if (role_id === ROLE_HR || role_id === ROLE_MANAGER) {
         const table = role_id === ROLE_HR ? 'hr_departments' : 'manager_departments';
         const deptIds = Array.isArray(managed_department_ids) ? managed_department_ids : [];
-        
+
         // Always include the primary department in the access list if not already there
         if (department_id && !deptIds.includes(department_id)) {
           deptIds.push(department_id);
@@ -356,7 +356,7 @@ router.post(
 
       // ── Create Leave Balances for Current Year ───────────────────────────
       const currentYear = new Date().getFullYear();
-      
+
       // Calculate months of service based on hire_date
       const hireDateObj = new Date(hire_date);
       const today = new Date();
@@ -559,7 +559,7 @@ router.get(
       // Fetch managed departments if applicable
       const isHR = user.role === "HR";
       const isManager = user.role === "Manager";
-      
+
       if (isHR || isManager) {
         const table = isHR ? 'hr_departments' : 'manager_departments';
         const [deptRows] = await pool.query(`SELECT department_id FROM ${table} WHERE user_id = ?`, [id]);
@@ -655,9 +655,9 @@ router.put(
     if (department_id !== undefined) updates.department_id = department_id;
     if (hire_date !== undefined) updates.hire_date = hire_date;
     if (is_active !== undefined) updates.is_active = is_active;
-    
+
     if (password) {
-       updates.password_hash = await bcrypt.hash(password, 10);
+      updates.password_hash = await bcrypt.hash(password, 10);
     }
 
     if (Object.keys(updates).length === 0) {
@@ -744,7 +744,7 @@ router.put(
       if (managed_department_ids !== undefined && (roleId === ROLE_HR || roleId === ROLE_MANAGER)) {
         const table = roleId === ROLE_HR ? 'hr_departments' : 'manager_departments';
         const deptIds = Array.isArray(managed_department_ids) ? managed_department_ids : [];
-        
+
         // Ensure primary department is in access list if provided
         const primaryDeptId = updates.department_id || (await pool.query('SELECT department_id FROM users WHERE id = ?', [id]))[0][0]?.department_id;
         if (primaryDeptId && !deptIds.includes(primaryDeptId)) {
@@ -753,7 +753,7 @@ router.put(
 
         // Delete old
         await pool.query(`DELETE FROM ${table} WHERE user_id = ?`, [id]);
-        
+
         // Insert new
         for (const dId of deptIds) {
           const [exists] = await pool.query('SELECT id FROM departments WHERE id = ?', [dId]);

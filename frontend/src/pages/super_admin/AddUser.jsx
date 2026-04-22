@@ -17,7 +17,7 @@ const POSITIONS = [
 ];
 
 const PHONE_PREFIXES = [
-  { code: '+66', label: '+66 (TH)', max: 10, placeholder: "0812345678" },
+  { code: '+66', label: '+66 (TH)', max: 9, placeholder: "893948271" },
   { code: '+1', label: '+1 (US)', max: 10, placeholder: "5550000000" },
   { code: '+44', label: '+44 (UK)', max: 11, placeholder: "7000000000" },
   { code: '+81', label: '+81 (JP)', max: 11, placeholder: "9000000000" },
@@ -68,9 +68,11 @@ export default function AddUser({ onNavigate }) {
   const selectedPhoneConfig = PHONE_PREFIXES.find(p => p.code === form.phonePrefix) || PHONE_PREFIXES[0]
 
   const handlePhoneChange = (e) => {
-    // Only allow digits
-    const digitsOnly = e.target.value.replace(/\D/g, '');
-    
+    // Only allow digits, and strip leading 0 for +66
+    let digitsOnly = e.target.value.replace(/\D/g, '');
+    if (form.phonePrefix === '+66') {
+      digitsOnly = digitsOnly.replace(/^0+/, '');
+    }
     if (digitsOnly.length <= selectedPhoneConfig.max) {
       setForm(p => ({ ...p, phone: digitsOnly }));
     }
@@ -118,7 +120,7 @@ export default function AddUser({ onNavigate }) {
       <Header activePage="dashboard" onNavigate={onNavigate} />
 
       <main className="max-w-[800px] mx-auto px-6 py-12 w-full flex-grow flex flex-col items-center">
-        
+
         <div className="bg-white rounded-[32px] p-10 w-full shadow-sm">
           {/* Header */}
           <div className="mb-6">
@@ -126,7 +128,7 @@ export default function AddUser({ onNavigate }) {
               Add New User
             </h1>
             <p className="text-[#64748b] text-[15px] font-medium">
-              Create a new profile and assign permissions within the Happy Hub ecosystem.
+              Create a new profile and assign permissions.
             </p>
           </div>
 
@@ -280,12 +282,12 @@ export default function AddUser({ onNavigate }) {
 
           {/* Access Credentials */}
           <div className="flex items-center gap-3 mb-6 bg-[#f4f7f9] p-4 rounded-2xl">
-             <div className="flex items-center gap-3 w-full">
-               <div className="w-8 h-8 rounded-full bg-[#d4f0f0] flex items-center justify-center">
-                 <Lock size={16} className="text-[#0d9488]" />
-               </div>
-               <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747]">Access Credentials</h3>
-             </div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="w-8 h-8 rounded-full bg-[#d4f0f0] flex items-center justify-center">
+                <Lock size={16} className="text-[#0d9488]" />
+              </div>
+              <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747]">Access Credentials</h3>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10 bg-[#f9fafb] p-6 rounded-3xl">
