@@ -176,9 +176,40 @@ export default function EmployeeProfile({ onNavigate }) {
   const [error, setError] = useState("")
   const [accessSettings, setAccessSettings] = useState({
     role: "Employee",
-    isActive: true
+    isActive: true,
+    hireDate: "",
+    positionId: ""
   })
+  const [positions, setPositions] = useState([])
   const [editingBalanceId, setEditingBalanceId] = useState(null)
+
+  // Calendar for Hire Date
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [calViewMonth, setCalViewMonth] = useState(new Date().getMonth())
+  const [calViewYear, setCalViewYear] = useState(new Date().getFullYear())
+  const calendarRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        setShowCalendar(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
+  const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"]
+  
+  function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
+  function getFirstDayOfMonth(y, m) {
+    const d = new Date(y, m, 1).getDay()
+    return d === 0 ? 6 : d - 1
+  }
 
   useEffect(() => {
     const loadEmployee = async () => {
@@ -186,10 +217,11 @@ export default function EmployeeProfile({ onNavigate }) {
         setLoading(true)
         setError("")
 
-        const [userRes, balanceRes, requestRes] = await Promise.all([
+        const [userRes, balanceRes, requestRes, positionsRes] = await Promise.all([
           api.get(`/users/${id}`),
           api.get(`/leave-balances/user/${id}`),
           api.get("/leave-requests", { params: { user_id: id } }),
+          api.get("/metadata/positions")
         ])
 
         const loadedUser = userRes.data?.user || null
@@ -199,10 +231,13 @@ export default function EmployeeProfile({ onNavigate }) {
         setEmployee(loadedUser)
         setBalances(loadedBalances)
         setRequests(loadedRequests)
+        setPositions(positionsRes.data?.positions || [])
         setAccessSettings((prev) => ({
           ...prev,
           role: loadedUser?.role || prev.role,
           isActive: Boolean(loadedUser?.is_active),
+          hireDate: loadedUser?.hire_date ? loadedUser.hire_date.split('T')[0] : "",
+          positionId: loadedUser?.position_id || ""
         }))
       } catch (err) {
         console.error("HR employee profile error:", err)
@@ -288,14 +323,26 @@ export default function EmployeeProfile({ onNavigate }) {
   }
 
   const handleSaveAccess = async () => {
+    if (!accessSettings.hireDate || !accessSettings.positionId) {
+      alert("Please ensure both Hire Date and Position are selected.")
+      return
+    }
     setSavingAccess(true)
     try {
       const payload = {
         role_id: ROLE_IDS[accessSettings.role],
         is_active: accessSettings.isActive ? 1 : 0,
+        hire_date: accessSettings.hireDate,
+        position_id: accessSettings.positionId,
       }
-      await api.put(`/users/${id}`, payload)
-      setEmployee(prev => ({ ...prev, role: accessSettings.role, is_active: accessSettings.isActive ? 1 : 0 }))
+      const res = await api.put(`/users/${id}`, payload)
+      const updatedUser = res.data.user
+      setEmployee(updatedUser)
+      
+      // Re-fetch balances to update eligibility and auto-provision new types if tenure increased
+      const balanceRes = await api.get(`/leave-balances/user/${id}`)
+      setBalances(balanceRes.data?.balances || [])
+      
       setShowAccessModal(false)
     } catch (err) {
       alert(err.response?.data?.message || "Failed to save access settings.")
@@ -647,18 +694,140 @@ export default function EmployeeProfile({ onNavigate }) {
                 </select>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-[#f9fafb] rounded-2xl">
-                <div>
-                  <p className="font-bold text-[14px] text-[#323940]">Account Active</p>
-                  <p className="text-[12px] text-[#94a3b8] font-medium">Enable or disable this account</p>
-                </div>
-                <button
-                  onClick={() => setAccessSettings((prev) => ({ ...prev, isActive: !prev.isActive }))}
-                  className={`w-12 h-7 rounded-full flex items-center px-1 transition-colors ${accessSettings.isActive ? "justify-end" : "justify-start"}`}
-                  style={{ backgroundColor: accessSettings.isActive ? "#2c7356" : "#cbd5e1" }}
+              <div>
+                <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase mb-2 block">Position</label>
+                <select
+                  value={accessSettings.positionId}
+                  onChange={(e) => setAccessSettings((prev) => ({ ...prev, positionId: e.target.value }))}
+                  className="w-full bg-[#f4f7f9] rounded-2xl py-3.5 px-5 text-[15px] font-bold text-[#323940] appearance-none border-none outline-none focus:ring-2 focus:ring-[#567278]/20 cursor-pointer"
                 >
-                  <div className="w-5 h-5 bg-white rounded-full shadow-sm transition-transform" />
-                </button>
+                  <option value="">Select Position</option>
+                  {positions.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative">
+                <label className="text-[12px] font-bold text-[#94a3b8] tracking-widest uppercase mb-2 block">Hire Date</label>
+                <div
+                  onClick={() => {
+                    const d = accessSettings.hireDate ? new Date(accessSettings.hireDate) : new Date();
+                    setCalViewMonth(d.getMonth());
+                    setCalViewYear(d.getFullYear());
+                    setShowCalendar(!showCalendar);
+                  }}
+                  className="w-full bg-[#f4f7f9] rounded-2xl py-3.5 px-5 text-[15px] font-bold text-[#323940] flex items-center justify-between cursor-pointer hover:bg-[#eef2f5] transition-colors focus:ring-2 focus:ring-[#567278]/20"
+                >
+                  <span className="truncate">{accessSettings.hireDate ? formatDate(accessSettings.hireDate) : "Select Date"}</span>
+                  <Icons.CalendarIcon size={18} className="text-[#94a3b8] shrink-0" />
+                </div>
+
+                {showCalendar && (
+                  <div ref={calendarRef} className="absolute bottom-full mb-3 left-0 right-0 bg-white rounded-[32px] shadow-[0_20px_50px_rgba(31,55,71,0.15)] p-6 border border-[#f0f3f8] z-[60] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center justify-between mb-5 gap-2">
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={calViewMonth}
+                          onChange={(e) => setCalViewMonth(parseInt(e.target.value))}
+                          className="bg-transparent font-bold text-[15px] text-[#1f3747] font-fredoka outline-none cursor-pointer hover:text-[#1c355e]"
+                        >
+                          {MONTH_NAMES.map((m, i) => (
+                            <option key={i} value={i}>{m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={calViewYear}
+                          onChange={(e) => setCalViewYear(parseInt(e.target.value))}
+                          className="bg-transparent font-bold text-[15px] text-[#1f3747] font-fredoka outline-none cursor-pointer hover:text-[#1c355e]"
+                        >
+                          {Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - 20 + i).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (calViewMonth === 0) { setCalViewMonth(11); setCalViewYear(y => y - 1); }
+                            else setCalViewMonth(m => m - 1);
+                          }}
+                          className="w-7 h-7 rounded-lg hover:bg-[#f0f3f8] flex items-center justify-center text-[#64748b] transition-colors"
+                        >
+                          <Icons.ChevronLeft size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (calViewMonth === 11) { setCalViewMonth(0); setCalViewYear(y => y + 1); }
+                            else setCalViewMonth(m => m + 1);
+                          }}
+                          className="w-7 h-7 rounded-lg hover:bg-[#f0f3f8] flex items-center justify-center text-[#64748b] transition-colors"
+                        >
+                          <Icons.ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 text-center mb-2">
+                      {DAY_LABELS.map((d, i) => (
+                        <div key={i} className="text-[11px] font-bold text-[#94a3b8] py-1 uppercase tracking-wider">{d}</div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 text-center gap-1">
+                      {(() => {
+                        const days = getDaysInMonth(calViewYear, calViewMonth);
+                        const first = getFirstDayOfMonth(calViewYear, calViewMonth);
+                        const cells = [];
+                        const prevMonthDays = getDaysInMonth(calViewMonth === 0 ? calViewYear - 1 : calViewYear, calViewMonth === 0 ? 11 : calViewMonth - 1);
+                        
+                        for (let i = first - 1; i >= 0; i--) cells.push({ d: prevMonthDays - i, current: false });
+                        for (let i = 1; i <= days; i++) cells.push({ d: i, current: true });
+                        while (cells.length < 35 || cells.length % 7 !== 0) cells.push({ d: cells.length - days - first + 2, current: false });
+
+                        return cells.map((c, idx) => {
+                          if (!c.current) return <div key={idx} className="py-2 text-[12px] text-[#cbd5e1] font-semibold opacity-50">{c.d}</div>;
+                          
+                          const dObj = new Date(calViewYear, calViewMonth, c.d);
+                          const isSelected = accessSettings.hireDate && 
+                                           new Date(accessSettings.hireDate).getDate() === c.d && 
+                                           new Date(accessSettings.hireDate).getMonth() === calViewMonth && 
+                                           new Date(accessSettings.hireDate).getFullYear() === calViewYear;
+                          
+                          const isToday = new Date().getDate() === c.d && 
+                                        new Date().getMonth() === calViewMonth && 
+                                        new Date().getFullYear() === calViewYear;
+
+                          return (
+                            <div
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const selected = new Date(calViewYear, calViewMonth, c.d);
+                                const y = selected.getFullYear();
+                                const m = String(selected.getMonth() + 1).padStart(2, '0');
+                                const d = String(selected.getDate()).padStart(2, '0');
+                                const dateStr = `${y}-${m}-${d}`;
+                                setAccessSettings(prev => ({ ...prev, hireDate: dateStr }));
+                                setShowCalendar(false);
+                              }}
+                              className="relative py-1 flex items-center justify-center cursor-pointer group"
+                            >
+                              <div className={`w-8 h-8 flex items-center justify-center text-[13px] font-bold rounded-full transition-all duration-200
+                                ${isSelected ? "bg-[#1c355e] text-white shadow-lg shadow-[#1c355e]/20" : isToday ? "bg-[#e9eff5] text-[#1c355e]" : "text-[#3f4a51] group-hover:bg-[#f0f3f8]"}`}>
+                                {c.d}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -672,9 +841,13 @@ export default function EmployeeProfile({ onNavigate }) {
               </button>
               <button
                 onClick={handleSaveAccess}
-                disabled={savingAccess}
+                disabled={savingAccess || !accessSettings.hireDate || !accessSettings.positionId}
                 className="flex-1 !py-3.5 rounded-full font-bold transition-colors"
-                style={{ backgroundColor: savingAccess ? "#e2e8f0" : "#dcf5eb", color: savingAccess ? "#94a3b8" : "#2c7356", fontSize: "15px" }}
+                style={{ 
+                  backgroundColor: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#e2e8f0" : "#dcf5eb", 
+                  color: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#94a3b8" : "#2c7356", 
+                  fontSize: "15px" 
+                }}
               >
                 {savingAccess ? "Saving..." : "Save Changes"}
               </button>
