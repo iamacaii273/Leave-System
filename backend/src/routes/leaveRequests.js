@@ -678,8 +678,8 @@ router.put(
 
       // Department check for Manager
       const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
-      const deptIds = managedDepts.map(d => d.department_id);
-      if (!deptIds.includes(request.department_id)) {
+      const deptIds = managedDepts.map(d => String(d.department_id));
+      if (!deptIds.includes(String(request.department_id))) {
         return res.status(403).json({ message: "You don't have permission to approve requests for this department." });
       }
 
@@ -748,8 +748,8 @@ router.put(
 
       // Department check for Manager
       const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
-      const deptIds = managedDepts.map(d => d.department_id);
-      if (!deptIds.includes(request.department_id)) {
+      const deptIds = managedDepts.map(d => String(d.department_id));
+      if (!deptIds.includes(String(request.department_id))) {
         return res.status(403).json({ message: "You don't have permission to reject requests for this department." });
       }
 

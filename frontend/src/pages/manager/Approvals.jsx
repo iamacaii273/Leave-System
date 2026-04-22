@@ -324,18 +324,8 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
   const isPending = req.status === "pending"
   const isAcknowledged = req.status === "acknowledged"
 
-  async function handleApprove() {
+  async function handleFinalApprove(note) {
     setActionLoading("approve")
-    try {
-      await api.put(`/leave-requests/${req.id}/approve`)
-      onApprove(req.id)
-    } catch (e) {
-      alert(e.response?.data?.message || "Failed to approve.")
-    } finally { setActionLoading(null) }
-  }
-
-  async function handleAcknowledge(note) {
-    setActionLoading("acknowledge")
     try {
       await api.put(`/leave-requests/${req.id}/approve`, { manager_note: note })
       setShowNoteModal(false)
@@ -370,9 +360,9 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
       {showNoteModal && (
         <ApproveNoteModal
           request={req}
-          onConfirm={handleAcknowledge}
+          onConfirm={handleFinalApprove}
           onCancel={() => setShowNoteModal(false)}
-          loading={actionLoading === "acknowledge"}
+          loading={actionLoading === "approve"}
         />
       )}
 
@@ -448,15 +438,17 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-3 flex-wrap">
-              {isPending && (
+              {(isPending || isAcknowledged) && (
                 <>
                   <button
-                    onClick={handleApprove}
+                    onClick={() => setShowNoteModal(true)}
                     disabled={!!actionLoading}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#bbf7d0] text-[#166534] text-[13px] font-[800] hover:bg-[#86efac] transition-colors cursor-pointer disabled:opacity-50"
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-[800] transition-colors cursor-pointer disabled:opacity-50 ${
+                      isAcknowledged ? 'bg-[#bfdbfe] text-[#1e3a8a] hover:opacity-80' : 'bg-[#bbf7d0] text-[#166534] hover:bg-[#86efac]'
+                    }`}
                   >
                     <CheckCircle size={15} strokeWidth={2.5} />
-                    {actionLoading === "approve" ? "Approving…" : "Approve"}
+                    {actionLoading === "approve" ? "Approving…" : isAcknowledged ? "Approve (Acknowledge)" : "Approve"}
                   </button>
                   <button
                     onClick={() => setShowRejectModal(true)}
@@ -467,18 +459,6 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
                     Reject
                   </button>
                 </>
-              )}
-
-              {isAcknowledged && (
-                <button
-                  onClick={() => setShowNoteModal(true)}
-                  disabled={!!actionLoading}
-                  style={{ backgroundColor: '#bfdbfe', color: '#1e3a8a' }}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-[800] hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-50"
-                >
-                  <CheckCircle size={15} strokeWidth={2.5} />
-                  {actionLoading === "acknowledge" ? "Approving…" : "Approve (Acknowledge)"}
-                </button>
               )}
 
               <button
