@@ -156,14 +156,9 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
 
     const id = uuidv4();
     let computedStatus = 'pending';
-    // [COMMENTED OUT] Previously auto-acknowledged for leave types not requiring manager approval
-    // if (!leaveType.requires_manager_approval) {
-    //   computedStatus = 'acknowledged';
-    // }
-    // [COMMENTED OUT] Previously auto-approved for leave types not requiring manager approval
-    // if (!leaveType.requires_manager_approval) {
-    //   computedStatus = 'approved';
-    // }
+    if (!leaveType.requires_manager_approval) {
+      computedStatus = 'acknowledged';
+    }
 
     await pool.query(
       `INSERT INTO leave_requests
@@ -181,16 +176,7 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       ],
     );
 
-    // [COMMENTED OUT] Balance deduction for auto-approved requests (no longer auto-approving)
-    // if (computedStatus === 'approved') {
-    //   await pool.query(
-    //     `UPDATE leave_balances
-    //      SET used_days = used_days + ?, remaining_days = remaining_days - ?
-    //      WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
-    //     [parsedDays, parsedDays, req.user.id, leave_type_id, currentYear]
-    //   );
-    // }
-    // Balance deduction is handled in the approval phase (PUT /:id/approve).
+    // Do not deduct balance upon submission. Handled in approval phase.
 
     // ── Save uploaded files ──────────────────────────────────────────────────
     if (req.files && req.files.length > 0) {
@@ -321,14 +307,6 @@ router.get(
       if (leave_type_id) {
         conditions.push("lr.leave_type_id = ?");
         params.push(leave_type_id);
-      }
-
-      if (req.user.role === "Manager") {
-        conditions.push("u.department_id = ?");
-        params.push(req.user.department_id || null);
-      } else if (req.user.role === "HR") {
-        conditions.push(`(u.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR u.department_id IS NULL)`);
-        params.push(req.user.id);
       }
 
       const where = `WHERE ${conditions.join(" AND ")}`;
@@ -509,14 +487,6 @@ router.get(
         params.push(user_id);
       }
 
-      if (req.user.role === "Manager") {
-        conditions.push("u.department_id = ?");
-        params.push(req.user.department_id || null);
-      } else if (req.user.role === "HR") {
-        conditions.push(`(u.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR u.department_id IS NULL)`);
-        params.push(req.user.id);
-      }
-
       const where =
         conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
@@ -558,73 +528,72 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [COMMENTED OUT] PUT /:id/acknowledge — Acknowledge a pending sick leave request
-// This route has been replaced by the unified approve flow.
+// PUT /:id/acknowledge — Acknowledge a pending sick leave request
 // Protected: Manager
 // ─────────────────────────────────────────────────────────────────────────────
-// router.put(
-//   "/:id/acknowledge",
-//   verifyToken,
-//   requireRole("Manager"),
-//   async (req, res) => {
-//     const { id } = req.params;
-//
-//     try {
-//       const [rows] = await pool.query(
-//         `SELECT
-//            lr.id,
-//            lr.user_id,
-//            lr.leave_type_id,
-//            lr.total_days,
-//            lr.status,
-//            lr.start_date,
-//            lt.name AS leave_type_name
-//          FROM leave_requests lr
-//          JOIN leave_types lt ON lr.leave_type_id = lt.id
-//          WHERE lr.id = ?`,
-//         [id],
-//       );
-//
-//       if (rows.length === 0) {
-//         return res.status(404).json({ message: "Leave request not found." });
-//       }
-//
-//       const request = rows[0];
-//
-//       if (request.status !== "pending") {
-//         return res.status(400).json({
-//           message: `Only pending requests can be acknowledged. Current status: '${request.status}'.`,
-//         });
-//       }
-//
-//       if (request.leave_type_name !== "ลาป่วย") {
-//         return res.status(400).json({
-//           message: "Only sick leave (ลาป่วย) requests can be acknowledged.",
-//         });
-//       }
-//
-//       const requestYear = new Date(request.start_date).getFullYear();
-//
-//       await pool.query(
-//         `UPDATE leave_requests
-//          SET status = 'acknowledged', approved_by = ?
-//          WHERE id = ?`,
-//         [req.user.id, id],
-//       );
-//
-//       await logAction(
-//         req.user.id,
-//         "request_approved",
-//         `Leave request ${id} acknowledged (sick leave) by ${req.user.id}.`,
-//       );
-//
-//       res.json({ message: "Leave request acknowledged successfully." });
-//     } catch (err) {
-//       console.error("Acknowledge leave request error:", err);
-//       res.status(500).json({ message: "Internal server error." });
-//     }
-//   },
-// );
+router.put(
+  "/:id/acknowledge",
+  verifyToken,
+  requireRole("Manager"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const [rows] = await pool.query(
+        `SELECT
+           lr.id,
+           lr.user_id,
+           lr.leave_type_id,
+           lr.total_days,
+           lr.status,
+           lr.start_date,
+           lt.name AS leave_type_name
+         FROM leave_requests lr
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
+         WHERE lr.id = ?`,
+        [id],
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "Leave request not found." });
+      }
+
+      const request = rows[0];
+
+      if (request.status !== "pending") {
+        return res.status(400).json({
+          message: `Only pending requests can be acknowledged. Current status: '${request.status}'.`,
+        });
+      }
+
+      if (request.leave_type_name !== "ลาป่วย") {
+        return res.status(400).json({
+          message: "Only sick leave (ลาป่วย) requests can be acknowledged.",
+        });
+      }
+
+      const requestYear = new Date(request.start_date).getFullYear();
+
+      await pool.query(
+        `UPDATE leave_requests
+         SET status = 'acknowledged', approved_by = ?
+         WHERE id = ?`,
+        [req.user.id, id],
+      );
+
+      await logAction(
+        req.user.id,
+        "request_approved",
+        `Leave request ${id} acknowledged (sick leave) by ${req.user.id}.`,
+      );
+
+      res.json({ message: "Leave request acknowledged successfully." });
+    } catch (err) {
+      console.error("Acknowledge leave request error:", err);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  },
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUT /:id/approve — Approve a pending leave request

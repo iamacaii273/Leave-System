@@ -53,7 +53,6 @@ function getRequestTheme(status = "") {
   const normalized = status.toLowerCase()
   if (normalized === "approved") return { bg: "#0cf1aa", text: "#185b48" }
   if (normalized === "rejected") return { bg: "#f56464", text: "#570008" }
-  // [COMMENTED OUT] Acknowledged theme kept for backward compat display
   if (normalized === "acknowledged") return { bg: "#93c5fd", text: "#1e3a8a" }
   if (normalized === "cancelled") return { bg: "#e2e8f0", text: "#475569" }
   return { bg: "#fee481", text: "#6b5413" } // generic/pending
@@ -165,9 +164,7 @@ export default function Reports({ onNavigate }) {
     loadData();
   }, []);
 
-  // [COMMENTED OUT] Removed "Acknowledged" filter — unified into approve flow
-  // const tabFilters = ["All", "Approved", "Pending", "Rejected", "Acknowledged", "Cancelled"]
-  const tabFilters = ["All", "Approved", "Pending", "Rejected", "Cancelled"]
+  const tabFilters = ["All", "Approved", "Pending", "Rejected", "Acknowledged", "Cancelled"]
 
   const adminNavItems = [
     { id: "dashboard", label: "Dashboard" },

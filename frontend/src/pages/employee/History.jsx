@@ -20,7 +20,7 @@ export default function History({ onNavigate }) {
 
   const [historyData, setHistoryData] = useState([])
   const [loading, setLoading] = useState(true)
-  
+
   const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 4
 
@@ -40,47 +40,47 @@ export default function History({ onNavigate }) {
       try {
         const res = await api.get('/leave-requests/me')
         const raw = res.data.leaveRequests || []
-        
+
         const mapped = raw.map(r => {
-           const sDate = new Date(r.start_date)
-           const eDate = new Date(r.end_date)
-           const subDate = new Date(r.submitted_at)
-           const opts = { month: "short", day: "numeric", year: "numeric" }
-           
-           const status = r.status.charAt(0).toUpperCase() + r.status.slice(1);
-           
-           let durationLabel = ""
-           const totalDays = parseFloat(r.total_days)
-           const totalHours = totalDays * 8
-           const fullDays = Math.floor(totalHours / 8)
-           const remainder = totalHours - (fullDays * 8)
-           const fullHours = Math.floor(remainder)
-           const remainMins = Math.round((remainder - fullHours) * 60)
-           
-           let labelParts = [];
-           if (fullDays > 0) labelParts.push(`${fullDays} Day${fullDays !== 1 ? 's' : ''}`);
-           if (fullHours > 0 || (fullDays === 0 && remainMins === 0)) labelParts.push(`${fullHours} Hr${fullHours !== 1 ? 's' : ''}`);
-           if (remainMins > 0) labelParts.push(`${remainMins} Min`);
-           durationLabel = labelParts.length > 0 ? labelParts.join(' ') : '0 Hr';
-           
-           return {
-             id: r.id,
-             type: r.leave_type_name,
-             iconName: r.leave_type_icon,
-             colorType: r.leave_type_color,
-             dates: isSameDay(sDate, eDate) 
-                ? sDate.toLocaleDateString("en-US", opts)
-                : `${sDate.toLocaleDateString("en-US", {month:"short", day:"numeric"})} - ${eDate.toLocaleDateString("en-US", opts)}`,
-             start: sDate,
-             end: eDate,
-             duration: durationLabel,
-             status: status,
-             reason: r.reason || "No Reason",
-             submitted: subDate.toLocaleDateString("en-US", opts)
-           }
+          const sDate = new Date(r.start_date)
+          const eDate = new Date(r.end_date)
+          const subDate = new Date(r.submitted_at)
+          const opts = { month: "short", day: "numeric", year: "numeric" }
+
+          const status = r.status.charAt(0).toUpperCase() + r.status.slice(1);
+
+          let durationLabel = ""
+          const totalDays = parseFloat(r.total_days)
+          const totalHours = totalDays * 8
+          const fullDays = Math.floor(totalHours / 8)
+          const remainder = totalHours - (fullDays * 8)
+          const fullHours = Math.floor(remainder)
+          const remainMins = Math.round((remainder - fullHours) * 60)
+
+          let labelParts = [];
+          if (fullDays > 0) labelParts.push(`${fullDays} Day${fullDays !== 1 ? 's' : ''}`);
+          if (fullHours > 0 || (fullDays === 0 && remainMins === 0)) labelParts.push(`${fullHours} Hr${fullHours !== 1 ? 's' : ''}`);
+          if (remainMins > 0) labelParts.push(`${remainMins} Min`);
+          durationLabel = labelParts.length > 0 ? labelParts.join(' ') : '0 Hr';
+
+          return {
+            id: r.id,
+            type: r.leave_type_name,
+            iconName: r.leave_type_icon,
+            colorType: r.leave_type_color,
+            dates: isSameDay(sDate, eDate)
+              ? sDate.toLocaleDateString("en-US", opts)
+              : `${sDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${eDate.toLocaleDateString("en-US", opts)}`,
+            start: sDate,
+            end: eDate,
+            duration: durationLabel,
+            status: status,
+            reason: r.reason || "No Reason",
+            submitted: subDate.toLocaleDateString("en-US", opts)
+          }
         })
         setHistoryData(mapped)
-      } catch(e) {
+      } catch (e) {
         console.error("Failed to fetch history:", e)
       } finally {
         setLoading(false)
@@ -94,16 +94,13 @@ export default function History({ onNavigate }) {
     setCurrentPage(1)
   }, [filter, appliedRange])
 
-  // [COMMENTED OUT] Removed "Acknowledged" filter — unified into approve flow
-  // const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled", "Acknowledged"]
-  const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled"]
+  const filters = ["All", "Approved", "Pending", "Rejected", "Cancelled", "Acknowledged"]
 
   const statusColors = {
     Approved: { bg: "#0cf1aa", text: "#185b48" },
     Pending: { bg: "#fee481", text: "#6b5413" },
     Rejected: { bg: "#f56464", text: "#570008" },
     Cancelled: { bg: "#e2e8f0", text: "#475569" },
-    // [COMMENTED OUT] Acknowledged status color kept for backward compat display
     Acknowledged: { bg: "#93c5fd", text: "#1e3a8a" },
     default: { bg: "#eef2f9", text: "#3f4a51" }
   }
@@ -130,9 +127,9 @@ export default function History({ onNavigate }) {
   function applyDateRange() {
     if (startDate && endDate) {
       const from = new Date(startDate)
-      from.setHours(0,0,0,0)
+      from.setHours(0, 0, 0, 0)
       const to = new Date(endDate)
-      to.setHours(23,59,59,999)
+      to.setHours(23, 59, 59, 999)
       setAppliedRange({ from, to })
     }
     setShowDatePicker(false)
@@ -274,8 +271,8 @@ export default function History({ onNavigate }) {
                     </tr>
                   ) : (
                     paginatedData.map((item) => (
-                      <tr 
-                        key={item.id} 
+                      <tr
+                        key={item.id}
                         className="hover:bg-[#f9fafb] transition-colors rounded-[24px] cursor-pointer"
                         onClick={() => navigate(`/employee/requests/${item.id}`)}
                       >
@@ -335,14 +332,14 @@ export default function History({ onNavigate }) {
                 Showing {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredData.length)} of {filteredData.length} request{filteredData.length !== 1 ? 's' : ''}
               </p>
               <div className="flex gap-2 items-center text-[#94a3b8] font-bold">
-                <ChevronLeft 
-                  size={16} 
+                <ChevronLeft
+                  size={16}
                   className={`cursor-pointer hover:text-[#3f4a51] ${currentPage === 1 ? "opacity-50 pointer-events-none" : ""}`}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 />
-                
+
                 {/* Dynamically generate page numbers (up to 5 for simplicity but scrolling via chevrons) */}
-                {Array.from({length: totalPages}, (_, i) => i + 1)
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                   .map((page, i, arr) => (
                     <div key={page} className="flex items-center gap-1">
@@ -355,12 +352,12 @@ export default function History({ onNavigate }) {
                         {page}
                       </button>
                     </div>
-                ))}
+                  ))}
 
-                <ChevronRight 
-                  size={16} 
+                <ChevronRight
+                  size={16}
                   className={`cursor-pointer hover:text-[#3f4a51] ${currentPage === totalPages ? "opacity-50 pointer-events-none" : ""}`}
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 />
               </div>
             </div>

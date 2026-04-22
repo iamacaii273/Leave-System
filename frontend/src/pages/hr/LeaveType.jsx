@@ -418,14 +418,13 @@ export default function LeaveType({ onNavigate }) {
               <h4 className="text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-6">Policy Settings</h4>
 
               <div className="flex flex-col gap-5">
-                {/* [COMMENTED OUT] Requires Manager Approval toggle — เลิกใช้แล้ว คำขอทั้งหมดต้องได้รับการอนุมัติจากผู้จัดการ */}
-                {/* <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center">
                   <div>
                     <p className="text-[15px] font-bold text-[#1f3747] mb-0.5">Requires Manager Approval</p>
                     <p className="text-[13px] text-[#64748b]">Disable will be auto approved.</p>
                   </div>
                   <Toggle active={form.reqManager} onClick={() => setForm({ ...form, reqManager: !form.reqManager })} />
-                </div> */}
+                </div>
 
                 <div className="flex justify-between items-center border-t border-gray-100 pt-5">
                   <div>

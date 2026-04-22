@@ -149,7 +149,6 @@ function getRequestTheme(status = "") {
   const normalized = status.toLowerCase()
   if (normalized === "approved") return { bg: "#0cf1aa", text: "#185b48" }
   if (normalized === "rejected") return { bg: "#f56464", text: "#570008" }
-  // [COMMENTED OUT] Acknowledged theme kept for backward compat display
   if (normalized === "acknowledged") return { bg: "#93c5fd", text: "#1e3a8a" }
   if (normalized === "cancelled") return { bg: "#e2e8f0", text: "#475569" }
   return { bg: "#fee481", text: "#6b5413" }
@@ -571,9 +570,7 @@ export default function EmployeeProfile({ onNavigate }) {
                     <div className="bg-[#eff6ff] p-4 rounded-[20px] flex flex-col justify-center">
                       <p className="text-[11px] font-bold text-[#60a5fa] uppercase tracking-widest mb-1">Pending</p>
                       <p className="text-[28px] font-fredoka font-bold text-[#2563eb] leading-none">
-                        {/* [COMMENTED OUT] Previously included acknowledged in pending count */}
-                        {/* {requests.filter(r => ['pending', 'acknowledged'].includes(r.status.toLowerCase())).length} */}
-                        {requests.filter(r => r.status.toLowerCase() === 'pending').length}
+                        {requests.filter(r => ['pending', 'acknowledged'].includes(r.status.toLowerCase())).length}
                       </p>
                     </div>
                   </div>

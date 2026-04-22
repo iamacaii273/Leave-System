@@ -257,9 +257,7 @@ function RejectModal({ request, onConfirm, onCancel, loading }) {
 }
 
 // ─── Request Card ─────────────────────────────────────────────────────────────
-// [COMMENTED OUT] onAcknowledge prop removed — unified into approve flow
-// function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
-function RequestCard({ req, onApprove, onReject }) {
+function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
@@ -285,9 +283,7 @@ function RequestCard({ req, onApprove, onReject }) {
       : { label: `${Math.abs(diffDays)}d ago`, color: "#475569", bg: "#e2e8f0" }
 
   const isPending = req.status === "pending"
-  // [COMMENTED OUT] Acknowledged status is now treated the same as pending
-  // const isAcknowledged = req.status === "acknowledged"
-  const canAct = isPending || req.status === "acknowledged"
+  const isAcknowledged = req.status === "acknowledged"
 
   async function handleApprove() {
     setActionLoading("approve")
@@ -299,16 +295,15 @@ function RequestCard({ req, onApprove, onReject }) {
     } finally { setActionLoading(null) }
   }
 
-  // [COMMENTED OUT] handleAcknowledge — replaced by unified approve flow
-  // async function handleAcknowledge() {
-  //   setActionLoading("acknowledge")
-  //   try {
-  //     await api.put(`/leave-requests/${req.id}/approve`)   // acknowledged → approved
-  //     onApprove(req.id)   // remove from list / update status to approved
-  //   } catch (e) {
-  //     alert(e.response?.data?.message || "Failed to acknowledge.")
-  //   } finally { setActionLoading(null) }
-  // }
+  async function handleAcknowledge() {
+    setActionLoading("acknowledge")
+    try {
+      await api.put(`/leave-requests/${req.id}/approve`)   // acknowledged → approved
+      onApprove(req.id)   // remove from list / update status to approved
+    } catch (e) {
+      alert(e.response?.data?.message || "Failed to acknowledge.")
+    } finally { setActionLoading(null) }
+  }
 
   async function handleRejectConfirm(reason) {
     setActionLoading("reject")
@@ -404,7 +399,7 @@ function RequestCard({ req, onApprove, onReject }) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-3 flex-wrap">
-              {canAct && (
+              {isPending && (
                 <>
                   <button
                     onClick={handleApprove}
@@ -425,8 +420,7 @@ function RequestCard({ req, onApprove, onReject }) {
                 </>
               )}
 
-              {/* [COMMENTED OUT] Separate acknowledge button — replaced by unified approve flow */}
-              {/* {isAcknowledged && (
+              {isAcknowledged && (
                 <button
                   onClick={handleAcknowledge}
                   disabled={!!actionLoading}
@@ -436,7 +430,7 @@ function RequestCard({ req, onApprove, onReject }) {
                   <CheckCircle size={15} strokeWidth={2.5} />
                   {actionLoading === "acknowledge" ? "Approving…" : "Approve (Acknowledge)"}
                 </button>
-              )} */}
+              )}
 
               <button
                 onClick={() => navigate(`/manager/requests/${req.id}`)}
@@ -481,10 +475,9 @@ export default function Approvals({ onNavigate }) {
   function handleRejected(id) {
     setAllRequests(prev => prev.filter(r => r.id !== id))
   }
-  // [COMMENTED OUT] handleAcknowledged — replaced by unified approve flow
-  // function handleAcknowledged(id) {
-  //   setAllRequests(prev => prev.filter(r => r.id !== id))
-  // }
+  function handleAcknowledged(id) {
+    setAllRequests(prev => prev.filter(r => r.id !== id))
+  }
 
   // Count pending + acknowledged for the subtitle
   const actionableCount = allRequests.filter(r => r.status === "pending" || r.status === "acknowledged").length
@@ -492,8 +485,7 @@ export default function Approvals({ onNavigate }) {
   const FILTERS = [
     { key: "all", label: "All" },
     { key: "pending", label: "Pending", badgeBg: '#fee481', badgeText: '#6b5413' },
-    // [COMMENTED OUT] Acknowledged filter tab — replaced by unified approve flow
-    // { key: "acknowledged", label: "Acknowledged", badgeBg: '#93c5fd', badgeText: '#1e3a8a' },
+    { key: "acknowledged", label: "Acknowledged", badgeBg: '#93c5fd', badgeText: '#1e3a8a' },
   ]
 
   // Count per status — always reflects the current date filter too
@@ -617,7 +609,7 @@ export default function Approvals({ onNavigate }) {
                   req={req}
                   onApprove={handleApproved}
                   onReject={handleRejected}
-                  // [COMMENTED OUT] onAcknowledge={handleAcknowledged}
+                  onAcknowledge={handleAcknowledged}
                 />
               ))
             )}

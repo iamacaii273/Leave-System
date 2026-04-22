@@ -342,9 +342,7 @@ export default function Dashboard({ onNavigate }) {
   }, [])
 
   const pending = requests.filter(r => r.status === "pending")
-  // [COMMENTED OUT] Acknowledged status is now treated the same as pending
-  // const acknowledged = requests.filter(r => r.status === "acknowledged")
-  const acknowledged = requests.filter(r => r.status === "acknowledged") // backward compat for old DB records
+  const acknowledged = requests.filter(r => r.status === "acknowledged")
   const actionableCount = pending.length + acknowledged.length
   const approved = requests.filter(r => r.status === "approved")
   const recent = requests.slice(0, 5)
