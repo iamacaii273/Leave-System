@@ -8,8 +8,10 @@ export default function SuperAdminDashboard({ onNavigate }) {
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
-  const [showAddModal, setShowAddModal] = useState(false)
-  const itemsPerPage = 4
+  const [filterRole, setFilterRole] = useState("all")
+  const [filterDept, setFilterDept] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const itemsPerPage = 8
 
   // Add user form
   const [newUser, setNewUser] = useState({ fullName: '', email: '', username: '', role: 'Employee', password: '' })
@@ -54,14 +56,30 @@ export default function SuperAdminDashboard({ onNavigate }) {
   const totalActive = allUsers.filter(u => u.status === 'Active').length
   const totalResigned = allUsers.filter(u => u.status === 'Resigned').length
 
-  // Filter
-  const filteredUsers = searchTerm
-    ? allUsers.filter(u =>
+  // Sorting and Filtering Pipeline
+  const ROLE_ORDER = { HR: 0, Manager: 1, Employee: 2 }
+
+  const sortedUsers = [...allUsers].sort((a, b) => {
+    const orderA = ROLE_ORDER[a.role] ?? 99
+    const orderB = ROLE_ORDER[b.role] ?? 99
+    if (orderA !== orderB) return orderA - orderB
+    return a.name.localeCompare(b.name)
+  })
+
+  const filteredUsers = sortedUsers.filter(u => {
+    const matchesSearch = !searchTerm ||
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    : allUsers
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesRole = filterRole === "all" || u.role === filterRole
+    const matchesDept = filterDept === "all" || u.department === filterDept
+    const matchesStatus = filterStatus === "all" || u.status === filterStatus
+
+    return matchesSearch && matchesRole && matchesDept && matchesStatus
+  })
+
+  // Get unique departments for filter dropdown
+  const departments = Array.from(new Set(allUsers.map(u => u.department))).filter(Boolean).sort()
 
   // Pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
@@ -161,16 +179,78 @@ export default function SuperAdminDashboard({ onNavigate }) {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={18} />
-          <input
-            type="text"
-            placeholder="Search users by name, email or role..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full bg-white rounded-2xl py-4 pl-12 pr-6 text-[15px] font-medium text-[#3f4a51] placeholder-[#94a3b8] shadow-sm outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all"
-          />
+        {/* Search & Filters */}
+        <div className="flex flex-col gap-4 mb-8">
+          <div className="relative">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={18} />
+            <input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full bg-white rounded-2xl py-4 pl-12 pr-6 text-[15px] font-medium text-[#3f4a51] placeholder-[#94a3b8] shadow-sm outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-1.5 min-w-[140px]">
+              <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider ml-1">Role</label>
+              <select
+                value={filterRole}
+                onChange={(e) => { setFilterRole(e.target.value); setCurrentPage(1); }}
+                className="bg-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold text-[#4c6367] shadow-sm focus:ring-2 focus:ring-[#3ea8e5]/20 outline-none cursor-pointer"
+              >
+                <option value="all">All Roles</option>
+                <option value="HR">HR</option>
+                <option value="Manager">Manager</option>
+                <option value="Employee">Employee</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5 min-w-[160px]">
+              <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider ml-1">Department</label>
+              <select
+                value={filterDept}
+                onChange={(e) => { setFilterDept(e.target.value); setCurrentPage(1); }}
+                className="bg-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold text-[#4c6367] shadow-sm focus:ring-2 focus:ring-[#3ea8e5]/20 outline-none cursor-pointer"
+              >
+                <option value="all">All Departments</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5 min-w-[140px]">
+              <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider ml-1">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                className="bg-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold text-[#4c6367] shadow-sm focus:ring-2 focus:ring-[#3ea8e5]/20 outline-none cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Resigned">Resigned</option>
+              </select>
+            </div>
+
+            {(filterRole !== "all" || filterDept !== "all" || filterStatus !== "all" || searchTerm) && (
+              <div className="flex flex-col gap-1.5 justify-end">
+                <button
+                  onClick={() => {
+                    setFilterRole("all");
+                    setFilterDept("all");
+                    setFilterStatus("all");
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                  className="px-4 py-2.5 text-[12px] font-bold text-[#f56464] hover:bg-[#fde2e4] rounded-xl transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Registry Table */}
