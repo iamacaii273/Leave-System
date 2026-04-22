@@ -256,12 +256,51 @@ function RejectModal({ request, onConfirm, onCancel, loading }) {
   )
 }
 
+// ─── Approve Note Modal ──────────────────────────────────────────────────────
+function ApproveNoteModal({ request, onConfirm, onCancel, loading }) {
+  const [note, setNote] = useState("")
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-xl">
+        <h2 className="font-fredoka font-bold text-[22px] text-[#2d3e50] mb-1">Approve with Note</h2>
+        <p className="text-[13px] text-[#94a3b8] font-medium mb-5">
+          Adding a note for <span className="font-bold text-[#3f4a51]">{request.full_name}</span>'s request.
+        </p>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Type your message here (optional)…"
+          rows={3}
+          className="w-full p-4 bg-[#f4f7fb] text-[#3f4a51] text-[14px] font-medium rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-[#166534] placeholder:text-[#b0bac6] mb-5"
+        />
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-2xl border-2 border-[#e2e8f0] text-[#64748b] font-bold text-[14px] hover:border-[#94a3b8] transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(note)}
+            disabled={loading}
+            style={{ backgroundColor: '#166534', color: '#ffffff' }}
+            className="flex-1 py-3 rounded-2xl font-bold text-[14px] transition-colors cursor-pointer disabled:opacity-60 hover:opacity-90"
+          >
+            {loading ? "Approving…" : "Confirm Approve"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Request Card ─────────────────────────────────────────────────────────────
 function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
 
   const { Icon, color, bg } = resolveLeaveTypeStyle(req.leave_type_icon, req.leave_type_color)
   const statusStyle = STATUS_STYLES[req.status?.toLowerCase()] || STATUS_STYLES.pending
@@ -295,13 +334,14 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
     } finally { setActionLoading(null) }
   }
 
-  async function handleAcknowledge() {
+  async function handleAcknowledge(note) {
     setActionLoading("acknowledge")
     try {
-      await api.put(`/leave-requests/${req.id}/approve`)   // acknowledged → approved
-      onApprove(req.id)   // remove from list / update status to approved
+      await api.put(`/leave-requests/${req.id}/approve`, { manager_note: note })
+      setShowNoteModal(false)
+      onApprove(req.id)
     } catch (e) {
-      alert(e.response?.data?.message || "Failed to acknowledge.")
+      alert(e.response?.data?.message || "Failed to approve.")
     } finally { setActionLoading(null) }
   }
 
@@ -324,6 +364,15 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
           onConfirm={handleRejectConfirm}
           onCancel={() => setShowRejectModal(false)}
           loading={actionLoading === "reject"}
+        />
+      )}
+
+      {showNoteModal && (
+        <ApproveNoteModal
+          request={req}
+          onConfirm={handleAcknowledge}
+          onCancel={() => setShowNoteModal(false)}
+          loading={actionLoading === "acknowledge"}
         />
       )}
 
@@ -422,7 +471,7 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
 
               {isAcknowledged && (
                 <button
-                  onClick={handleAcknowledge}
+                  onClick={() => setShowNoteModal(true)}
                   disabled={!!actionLoading}
                   style={{ backgroundColor: '#bfdbfe', color: '#1e3a8a' }}
                   className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-[800] hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-50"

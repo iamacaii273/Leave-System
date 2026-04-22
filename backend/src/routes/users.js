@@ -219,6 +219,7 @@ router.post(
       role_id,
       position_id,
       department_id,
+      managed_department_ids,
       hire_date,
     } = req.body;
 
@@ -240,6 +241,7 @@ router.post(
 
     const ROLE_EMPLOYEE = "rl000001-0000-0000-0000-000000000001";
     const ROLE_MANAGER = "rl000001-0000-0000-0000-000000000002";
+    const ROLE_HR = "rl000001-0000-0000-0000-000000000003";
     const ROLE_SUPER_ADMIN = "rl000001-0000-0000-0000-000000000004";
 
     // ── Role restriction ─────────────────────────────────────────────────────
@@ -330,6 +332,28 @@ router.post(
         ],
       );
 
+      // ── Handle multiple departments for HR/Manager ─────────────────────────
+      if (role_id === ROLE_HR || role_id === ROLE_MANAGER) {
+        const table = role_id === ROLE_HR ? 'hr_departments' : 'manager_departments';
+        const deptIds = Array.isArray(managed_department_ids) ? managed_department_ids : [];
+        
+        // Always include the primary department in the access list if not already there
+        if (department_id && !deptIds.includes(department_id)) {
+          deptIds.push(department_id);
+        }
+
+        for (const dId of deptIds) {
+          // Validate dept exists
+          const [exists] = await pool.query('SELECT id FROM departments WHERE id = ?', [dId]);
+          if (exists.length > 0) {
+            await pool.query(
+              `INSERT IGNORE INTO ${table} (user_id, department_id) VALUES (?, ?)`,
+              [id, dId]
+            );
+          }
+        }
+      }
+
       // ── Create Leave Balances for Current Year ───────────────────────────
       const currentYear = new Date().getFullYear();
       
@@ -392,11 +416,23 @@ router.get(
       const params = [];
 
       if (req.user.role === "Manager") {
-        whereClause += " AND u.department_id = ?";
-        params.push(req.user.department_id || null);
+        const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        if (deptIds.length > 0) {
+          whereClause += " AND u.department_id IN (?)";
+          params.push(deptIds);
+        } else {
+          whereClause += " AND 1 = 0";
+        }
       } else if (req.user.role === "HR") {
-        whereClause += " AND (u.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR u.department_id IS NULL)";
-        params.push(req.user.id);
+        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        if (deptIds.length > 0) {
+          whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
+          params.push(deptIds);
+        } else {
+          whereClause += " AND u.department_id IS NULL";
+        }
       }
 
       const [rows] = await pool.query(
@@ -430,8 +466,14 @@ router.get(
       const params = [currentYear];
 
       if (req.user.role === "HR") {
-        whereClause += " AND (u.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR u.department_id IS NULL)";
-        params.push(req.user.id);
+        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        if (deptIds.length > 0) {
+          whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
+          params.push(deptIds);
+        } else {
+          whereClause += " AND u.department_id IS NULL";
+        }
       }
 
       const [rows] = await pool.query(
@@ -512,7 +554,21 @@ router.get(
         return res.status(404).json({ message: "User not found." });
       }
 
-      res.json({ user: rows[0] });
+      const user = rows[0];
+
+      // Fetch managed departments if applicable
+      const isHR = user.role === "HR";
+      const isManager = user.role === "Manager";
+      
+      if (isHR || isManager) {
+        const table = isHR ? 'hr_departments' : 'manager_departments';
+        const [deptRows] = await pool.query(`SELECT department_id FROM ${table} WHERE user_id = ?`, [id]);
+        user.managed_department_ids = deptRows.map(r => r.department_id);
+      } else {
+        user.managed_department_ids = [];
+      }
+
+      res.json({ user });
     } catch (err) {
       console.error("GET /:id error:", err);
       res.status(500).json({ message: "Internal server error." });
@@ -585,6 +641,7 @@ router.put(
       department_id,
       hire_date,
       is_active,
+      managed_department_ids,
     } = req.body;
 
     // Only pick fields that were actually supplied in the request body
@@ -675,6 +732,36 @@ router.put(
       );
 
       res.json({ message: "User updated successfully.", user: rows[0] });
+
+      // Handle multiple departments sync
+      const ROLE_MANAGER = "rl000001-0000-0000-0000-000000000002";
+      const ROLE_HR = "rl000001-0000-0000-0000-000000000003";
+
+      // Re-fetch user role to be sure
+      const [finalUser] = await pool.query('SELECT role_id FROM users WHERE id = ?', [id]);
+      const roleId = finalUser[0]?.role_id;
+
+      if (managed_department_ids !== undefined && (roleId === ROLE_HR || roleId === ROLE_MANAGER)) {
+        const table = roleId === ROLE_HR ? 'hr_departments' : 'manager_departments';
+        const deptIds = Array.isArray(managed_department_ids) ? managed_department_ids : [];
+        
+        // Ensure primary department is in access list if provided
+        const primaryDeptId = updates.department_id || (await pool.query('SELECT department_id FROM users WHERE id = ?', [id]))[0][0]?.department_id;
+        if (primaryDeptId && !deptIds.includes(primaryDeptId)) {
+          deptIds.push(primaryDeptId);
+        }
+
+        // Delete old
+        await pool.query(`DELETE FROM ${table} WHERE user_id = ?`, [id]);
+        
+        // Insert new
+        for (const dId of deptIds) {
+          const [exists] = await pool.query('SELECT id FROM departments WHERE id = ?', [dId]);
+          if (exists.length > 0) {
+            await pool.query(`INSERT IGNORE INTO ${table} (user_id, department_id) VALUES (?, ?)`, [id, dId]);
+          }
+        }
+      }
     } catch (err) {
       console.error(`PUT /:id error (id=${id}):`, err);
       res.status(500).json({ message: "Internal server error." });

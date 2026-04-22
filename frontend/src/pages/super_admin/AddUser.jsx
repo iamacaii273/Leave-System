@@ -38,7 +38,8 @@ export default function AddUser({ onNavigate }) {
     department: '',
     password: '',
     confirmPassword: '',
-    hireDate: ''
+    hireDate: '',
+    managedDepartments: []
   })
 
   const [departments, setDepartments] = useState([])
@@ -93,6 +94,7 @@ export default function AddUser({ onNavigate }) {
         role_id: form.role,
         position_id: form.position,
         department_id: form.department,
+        managed_department_ids: form.managedDepartments,
         hire_date: form.hireDate || new Date().toISOString().split('T')[0]
       }
 
@@ -246,6 +248,34 @@ export default function AddUser({ onNavigate }) {
                 <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
               </div>
             </div>
+
+            {/* Managed Departments for Manager/HR */}
+            {(form.role === 'rl000001-0000-0000-0000-000000000002' || form.role === 'rl000001-0000-0000-0000-000000000003') && (
+              <div className="flex flex-col gap-2 md:col-span-2 bg-[#f8fafb] p-6 rounded-3xl border border-[#edf2f7]">
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department Access <span className="text-[9px] lowercase italic font-normal">(Managers/HR can manage multiple)</span></label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                  {departments.map(d => (
+                    <label key={d.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#edf2f7] cursor-pointer transition-colors border border-transparent hover:border-[#cbd5e1]">
+                      <input
+                        type="checkbox"
+                        checked={form.managedDepartments.includes(d.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setForm(p => ({
+                            ...p,
+                            managedDepartments: checked
+                              ? [...p.managedDepartments, d.id]
+                              : p.managedDepartments.filter(id => id !== d.id)
+                          }));
+                        }}
+                        className="w-4 h-4 rounded border-[#cbd5e1] text-[#3ea8e5] focus:ring-[#3ea8e5]"
+                      />
+                      <span className="text-[14px] font-bold text-[#323940]">{d.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Access Credentials */}

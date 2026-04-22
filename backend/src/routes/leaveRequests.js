@@ -309,6 +309,29 @@ router.get(
         params.push(leave_type_id);
       }
 
+      if (req.user.role === "Employee") {
+        conditions.push("u.department_id = ?");
+        params.push(req.user.department_id || null);
+      } else if (req.user.role === "Manager") {
+        const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        if (deptIds.length > 0) {
+          conditions.push(`u.department_id IN (?)`);
+          params.push(deptIds);
+        } else {
+          conditions.push("1 = 0");
+        }
+      } else if (req.user.role === "HR") {
+        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        if (deptIds.length > 0) {
+          conditions.push(`u.department_id IN (?)`);
+          params.push(deptIds);
+        } else {
+          conditions.push("1 = 0");
+        }
+      }
+
       const where = `WHERE ${conditions.join(" AND ")}`;
 
       const [rows] = await pool.query(
@@ -329,6 +352,7 @@ router.get(
            lr.approved_by,
            approver.full_name  AS approved_by_name,
            lr.reject_reason,
+           lr.manager_note,
            lr.submitted_at,
            lr.updated_at
          FROM leave_requests lr
@@ -383,6 +407,7 @@ router.get(
            lr.approved_by,
            approver.full_name AS approved_by_name,
            lr.reject_reason,
+           lr.manager_note,
            lr.submitted_at,
            lr.updated_at
          FROM leave_requests lr
@@ -487,6 +512,29 @@ router.get(
         params.push(status);
       }
 
+      if (req.user.role === "Manager") {
+        const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        
+        if (deptIds.length > 0) {
+          conditions.push(`u.department_id IN (?)`);
+          params.push(deptIds);
+        } else {
+          // If no departments assigned, they see nothing
+          conditions.push("1 = 0");
+        }
+      } else if (req.user.role === "HR") {
+        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+        const deptIds = managedDepts.map(d => d.department_id);
+        
+        if (deptIds.length > 0) {
+          conditions.push(`(u.department_id IN (?) OR u.department_id IS NULL)`);
+          params.push(deptIds);
+        } else {
+          conditions.push("u.department_id IS NULL");
+        }
+      }
+
       if (user_id) {
         conditions.push("lr.user_id = ?");
         params.push(user_id);
@@ -513,6 +561,7 @@ router.get(
            lr.approved_by,
            approver.full_name  AS approved_by_name,
            lr.reject_reason,
+           lr.manager_note,
            lr.submitted_at,
            lr.updated_at
          FROM leave_requests lr
@@ -610,12 +659,14 @@ router.put(
   requireRole("Manager"),
   async (req, res) => {
     const { id } = req.params;
+    const { manager_note } = req.body;
 
     try {
       const [rows] = await pool.query(
-        `SELECT id, user_id, leave_type_id, total_days, status, start_date
-         FROM leave_requests
-         WHERE id = ?`,
+        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.status, lr.start_date, u.department_id
+         FROM leave_requests lr
+         JOIN users u ON lr.user_id = u.id
+         WHERE lr.id = ?`,
         [id],
       );
 
@@ -624,6 +675,13 @@ router.put(
       }
 
       const request = rows[0];
+
+      // Department check for Manager
+      const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
+      const deptIds = managedDepts.map(d => d.department_id);
+      if (!deptIds.includes(request.department_id)) {
+        return res.status(403).json({ message: "You don't have permission to approve requests for this department." });
+      }
 
       if (request.status !== "pending" && request.status !== "acknowledged") {
         return res.status(400).json({
@@ -635,9 +693,9 @@ router.put(
 
       await pool.query(
         `UPDATE leave_requests
-         SET status = 'approved', approved_by = ?
+         SET status = 'approved', approved_by = ?, manager_note = ?
          WHERE id = ?`,
-        [req.user.id, id],
+        [req.user.id, manager_note || null, id],
       );
 
       await pool.query(
@@ -675,7 +733,10 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        "SELECT id, user_id, status, total_days, leave_type_id, start_date FROM leave_requests WHERE id = ?",
+        `SELECT lr.id, lr.user_id, lr.status, lr.total_days, lr.leave_type_id, lr.start_date, u.department_id
+         FROM leave_requests lr
+         JOIN users u ON lr.user_id = u.id
+         WHERE lr.id = ?`,
         [id],
       );
 
@@ -684,6 +745,13 @@ router.put(
       }
 
       const request = rows[0];
+
+      // Department check for Manager
+      const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
+      const deptIds = managedDepts.map(d => d.department_id);
+      if (!deptIds.includes(request.department_id)) {
+        return res.status(403).json({ message: "You don't have permission to reject requests for this department." });
+      }
 
       if (request.status !== "pending" && request.status !== "acknowledged") {
         return res.status(400).json({

@@ -223,10 +223,14 @@ export default function RequestDetail({ onNavigate }) {
             </div>
           </div>
           
-          {request.reject_reason && request.status !== "cancelled" && (
-            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: "#fee2e2", borderLeft: "4px solid #f56464" }}>
-              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#991b1b", marginBottom: "4px" }}>Manager's Note</p>
-              <p style={{ fontSize: "13px", color: "#991b1b", fontStyle: "italic" }}>{request.reject_reason}</p>
+          {(request.reject_reason || request.manager_note) && request.status !== "cancelled" && (
+            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: request.status === "rejected" ? "#fee2e2" : "#f0fdf4", borderLeft: `4px solid ${request.status === "rejected" ? "#f56464" : "#16a34a"}` }}>
+              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: request.status === "rejected" ? "#991b1b" : "#166534", marginBottom: "4px" }}>
+                Manager's {request.status === "rejected" ? "Rejection Reason" : "Note"}
+              </p>
+              <p style={{ fontSize: "13px", color: request.status === "rejected" ? "#991b1b" : "#166534", fontStyle: "italic" }}>
+                {request.reject_reason || request.manager_note}
+              </p>
             </div>
           )}
         </div>
