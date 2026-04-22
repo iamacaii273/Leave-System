@@ -463,7 +463,7 @@ export default function Approvals({ onNavigate }) {
     ]).then(([pRes, aRes]) => {
       const combined = sortRequests([
         ...(pRes.data.leaveRequests || []),
-        ...(aRes.data.leaveRequests  || []),
+        ...(aRes.data.leaveRequests || []),
       ])
       setAllRequests(combined)
     }).finally(() => setLoading(false))
@@ -519,9 +519,9 @@ export default function Approvals({ onNavigate }) {
         </div>
 
         {/* [COMMENTED OUT] Filter Tabs — removed since all requests are now pending only */}
-        {/* <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
           {FILTERS.map(f => {
-            const count    = f.key === "all" ? dateFiltered.length : countByStatus(f.key)
+            const count = f.key === "all" ? dateFiltered.length : countByStatus(f.key)
             const isActive = filter === f.key
             return (
               <button
@@ -529,18 +529,18 @@ export default function Approvals({ onNavigate }) {
                 onClick={() => setFilter(f.key)}
                 style={{
                   backgroundColor: isActive ? '#466063' : '#cdecea',
-                  color:           isActive ? '#ffffff' : '#1a5c54',
-                  height:     '36px',
-                  padding:    '0 24px',
+                  color: isActive ? '#ffffff' : '#1a5c54',
+                  height: '36px',
+                  padding: '0 24px',
                   borderRadius: '9999px',
-                  fontSize:   '13px',
+                  fontSize: '13px',
                   fontWeight: '700',
-                  cursor:     'pointer',
+                  cursor: 'pointer',
                   whiteSpace: 'nowrap',
-                  border:     'none',
-                  display:    'inline-flex',
+                  border: 'none',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap:        '8px',
+                  gap: '8px',
                   transition: 'opacity 0.15s',
                 }}
               >
@@ -548,10 +548,10 @@ export default function Approvals({ onNavigate }) {
                 {f.badgeBg && count > 0 && (
                   <span style={{
                     backgroundColor: isActive ? 'rgba(255,255,255,0.22)' : f.badgeBg,
-                    color:           isActive ? '#ffffff' : f.badgeText,
-                    fontSize:   '11px',
+                    color: isActive ? '#ffffff' : f.badgeText,
+                    fontSize: '11px',
                     fontWeight: '900',
-                    padding:    '2px 7px',
+                    padding: '2px 7px',
                     borderRadius: '9999px',
                     lineHeight: '1',
                   }}>
@@ -565,15 +565,15 @@ export default function Approvals({ onNavigate }) {
           {selectedDate && (
             <span style={{
               backgroundColor: '#dce8f5',
-              color:           '#1c355e',
-              height:     '36px',
-              padding:    '0 24px',
+              color: '#1c355e',
+              height: '36px',
+              padding: '0 24px',
               borderRadius: '9999px',
-              fontSize:   '13px',
+              fontSize: '13px',
               fontWeight: '700',
-              display:    'inline-flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap:        '8px',
+              gap: '8px',
             }}>
               {MONTH_NAMES[selectedDate.getMonth()]} {selectedDate.getDate()}
               <button
@@ -582,7 +582,7 @@ export default function Approvals({ onNavigate }) {
               >×</button>
             </span>
           )}
-        </div> */}
+        </div>
 
 
 
