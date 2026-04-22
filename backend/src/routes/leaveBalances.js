@@ -71,6 +71,7 @@ router.get('/me', verifyToken, async (req, res) => {
          lt.name  AS leave_type_name,
          lt.color_type,
          lt.icon_name,
+         lt.min_service_months,
          lb.year,
          lb.total_days,
          lb.used_days,
@@ -84,9 +85,12 @@ router.get('/me', verifyToken, async (req, res) => {
       [req.user.id, currentYear]
     );
 
+    // Final filter to ensure only eligible balances are returned
+    const filteredBalances = rows.filter(r => serviceMonths >= (r.min_service_months || 0));
+
     res.json({
       year: currentYear,
-      balances: rows,
+      balances: filteredBalances,
     });
   } catch (err) {
     console.error('GET /leave-balances/me error:', err);
@@ -136,7 +140,9 @@ router.get(
       const [existingBalances] = await pool.query('SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?', [userId, year]);
       const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
       
-      const missingTypes = activeTypes.filter(t => !existingTypeIds.has(t.id));
+      const missingTypes = activeTypes.filter(
+        t => !existingTypeIds.has(t.id) && serviceMonths >= t.min_service_months
+      );
       
       if (missingTypes.length > 0) {
         const inserts = missingTypes.map(t => [
@@ -156,6 +162,7 @@ router.get(
            lt.name  AS leave_type_name,
            lt.color_type,
            lt.icon_name,
+           lt.min_service_months,
            lb.year,
            lb.total_days,
            lb.used_days,
@@ -169,10 +176,13 @@ router.get(
         [userId, year],
       )
 
+      // Final filter to ensure only eligible balances are returned to the admin view
+      const filteredBalances = rows.filter(r => serviceMonths >= (r.min_service_months || 0));
+
       res.json({
         user: userRows[0],
         year,
-        balances: rows,
+        balances: filteredBalances,
       })
     } catch (err) {
       console.error('GET /leave-balances/user/:userId error:', err)

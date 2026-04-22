@@ -96,7 +96,7 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
     const currentYear = new Date().getFullYear();
 
     const [typeRows] = await pool.query(
-      `SELECT requires_attachment, requires_manager_approval FROM leave_types WHERE id = ?`,
+      `SELECT name, requires_attachment, requires_manager_approval, min_service_months FROM leave_types WHERE id = ?`,
       [leave_type_id]
     );
 
@@ -105,6 +105,26 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
     }
 
     const leaveType = typeRows[0];
+
+    // ─── Service Months Validation ───
+    const [userRow] = await pool.query("SELECT hire_date FROM users WHERE id = ?", [req.user.id]);
+    const hireDateStr = userRow[0]?.hire_date;
+    const minMonths = leaveType.min_service_months || 0;
+
+    if (minMonths > 0) {
+      if (!hireDateStr) {
+        return res.status(403).json({ message: `This leave type requires ${minMonths} months of service, but your hire date is not set.` });
+      }
+      const hireDate = new Date(hireDateStr);
+      const now = new Date();
+      const serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+      if (serviceMonths < minMonths) {
+        return res.status(403).json({ 
+          message: `You must have at least ${minMonths} months of service to use this leave type (${leaveType.name}). Your current service is ${serviceMonths} month(s).` 
+        });
+      }
+    }
+
     if (leaveType.requires_attachment && (!req.files || req.files.length === 0)) {
       return res.status(400).json({ message: "This leave type requires supporting document attachments to submit." });
     }

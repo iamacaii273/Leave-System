@@ -83,23 +83,34 @@ router.post(
         [id],
       );
 
-      // Auto-provision balances for all active users so that Reports and Employee Lists reflect it immediately
+      // Auto-provision balances for eligible active users
       const currentYear = new Date().getFullYear();
       const [users] = await pool.query(
-        "SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE u.is_active = 1 AND r.name = 'Employee'"
+        "SELECT u.id, u.hire_date FROM users u JOIN roles r ON u.role_id = r.id WHERE u.is_active = 1 AND r.name = 'Employee'"
       );
       if (users.length > 0) {
-        const defaultDays = default_days_per_year ?? 0;
-        const inserts = users.map(u => [
-          uuidv4(), u.id, id, currentYear, defaultDays, 0, defaultDays
-        ]);
-        
-        await pool.query(
-          `INSERT INTO leave_balances
-             (id, user_id, leave_type_id, year, total_days, used_days, remaining_days)
-           VALUES ?`,
-          [inserts]
-        );
+        const minMonths = min_service_months ?? 0;
+        const now = new Date();
+        const eligibleUsers = users.filter(u => {
+          if (!u.hire_date) return minMonths === 0;
+          const hireDate = new Date(u.hire_date);
+          const serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+          return serviceMonths >= minMonths;
+        });
+
+        if (eligibleUsers.length > 0) {
+          const defaultDays = default_days_per_year ?? 0;
+          const inserts = eligibleUsers.map(u => [
+            uuidv4(), u.id, id, currentYear, defaultDays, 0, defaultDays
+          ]);
+          
+          await pool.query(
+            `INSERT INTO leave_balances
+               (id, user_id, leave_type_id, year, total_days, used_days, remaining_days)
+             VALUES ?`,
+            [inserts]
+          );
+        }
       }
 
       res.status(201).json({
