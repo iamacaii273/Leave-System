@@ -116,16 +116,19 @@ export default function Dashboard({ onNavigate }) {
         <div className="flex flex-wrap gap-6 mb-16 justify-center lg:justify-start">
           {balances.length === 0 ? (
             <p className="text-[#64748b] font-medium">No leave balances found.</p>
-          ) : balances.map(bal => (
-            <LeaveBalanceCard 
-              key={bal.id}
-              title={bal.leave_type_name} 
-              used={bal.used_days} 
-              total={bal.total_days} 
-              colorType={bal.color_type}
-              iconName={bal.icon_name}
-            />
-          ))}
+          ) : balances
+              .filter(bal => bal.is_eligible !== false)
+              .map(bal => (
+                <LeaveBalanceCard 
+                  key={bal.id}
+                  title={bal.leave_type_name} 
+                  used={bal.used_days} 
+                  total={bal.total_days} 
+                  colorType={bal.color_type}
+                  iconName={bal.icon_name}
+                  isEligible={bal.is_eligible}
+                />
+              ))}
         </div>
 
         {/* Recent Requests & Team Members */}

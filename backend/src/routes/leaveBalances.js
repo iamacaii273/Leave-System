@@ -85,12 +85,15 @@ router.get('/me', verifyToken, async (req, res) => {
       [req.user.id, currentYear]
     );
 
-    // Final filter to ensure only eligible balances are returned
-    const filteredBalances = rows.filter(r => serviceMonths >= (r.min_service_months || 0));
+    // Map rows to include eligibility flag
+    const balancesWithEligibility = rows.map(r => ({
+      ...r,
+      is_eligible: serviceMonths >= (r.min_service_months || 0)
+    }));
 
     res.json({
       year: currentYear,
-      balances: filteredBalances,
+      balances: balancesWithEligibility,
     });
   } catch (err) {
     console.error('GET /leave-balances/me error:', err);
@@ -176,13 +179,16 @@ router.get(
         [userId, year],
       )
 
-      // Final filter to ensure only eligible balances are returned to the admin view
-      const filteredBalances = rows.filter(r => serviceMonths >= (r.min_service_months || 0));
+      // Map rows to include eligibility flag
+      const balancesWithEligibility = rows.map(r => ({
+        ...r,
+        is_eligible: serviceMonths >= (r.min_service_months || 0)
+      }));
 
       res.json({
         user: userRows[0],
         year,
-        balances: filteredBalances,
+        balances: balancesWithEligibility,
       })
     } catch (err) {
       console.error('GET /leave-balances/user/:userId error:', err)

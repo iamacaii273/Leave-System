@@ -20,17 +20,16 @@ const ICON_MAP = {
   more:        MoreHorizontal,
 }
 
-export default function LeaveBalanceCard({ title, used, total, colorType, iconName }) {
-  const safeUsed = Number(used) || 0;
-  const safeTotal = Number(total) || 1; 
-  const percentage = (safeUsed / safeTotal) * 100
+export default function LeaveBalanceCard({ title, used, total, colorType, iconName, isEligible = true }) {
+  const safeUsed = isEligible ? (Number(used) || 0) : 0;
+  const safeTotal = isEligible ? (Number(total) || 1) : 0;
+  const percentage = isEligible ? ((safeUsed / safeTotal) * 100) : 0;
 
   const Icon = ICON_MAP[iconName] || Umbrella;
   const bgColor = COLOR_MAP[colorType] || "#e2e8f0";
 
-  const formattedUsed = Number(safeUsed.toFixed(1));
-  const formattedTotal = Number(safeTotal.toFixed(1));
-
+  const formattedUsed = isEligible ? Number(safeUsed.toFixed(1)) : "0";
+  const formattedTotal = isEligible ? Number(safeTotal.toFixed(1)) : "0";
 
   const totalHoursUsed = safeUsed * 8;
   const daysUsed = Math.floor(totalHoursUsed / 8);
@@ -41,15 +40,20 @@ export default function LeaveBalanceCard({ title, used, total, colorType, iconNa
   if (daysUsed > 0) parts.push(`${daysUsed}d`);
   if (hrsUsed > 0) parts.push(`${hrsUsed}h`);
   if (minsUsed > 0) parts.push(`${minsUsed}m`);
-  const usedText = parts.length > 0 ? parts.join(" ") + " used" : "0d used";
+  const usedText = isEligible ? (parts.length > 0 ? parts.join(" ") + " used" : "0d used") : "Requirement not met";
 
   return (
     <div
-      className="relative overflow-hidden rounded-[36px] p-7 min-w-[240px] flex-1 max-w-[320px] transition-transform hover:scale-[1.02]"
+      className={`relative overflow-hidden rounded-[36px] p-7 min-w-[240px] flex-1 max-w-[320px] transition-transform ${isEligible ? "hover:scale-[1.02]" : "opacity-90 shadow-none border-2 border-dashed border-black/10"}`}
       style={{ backgroundColor: bgColor }}
     >
-      <div className="relative z-10" style={{ color: "#2d3748" }}>
-        <p className="text-[15px] font-bold mb-2">{title}</p>
+      <div className="relative z-10" style={{ color: isEligible ? "#2d3748" : "#ef4444" }}>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[15px] font-bold">{title}</p>
+          {!isEligible && (
+            <span className="text-[10px] font-bold bg-white/40 px-2 py-0.5 rounded-full uppercase tracking-tighter">Locked</span>
+          )}
+        </div>
         <div className="flex items-baseline gap-1 mb-1">
           <span className="text-5xl font-bold font-fredoka tracking-wide">
             {formattedUsed}

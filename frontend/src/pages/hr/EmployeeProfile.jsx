@@ -403,55 +403,57 @@ export default function EmployeeProfile({ onNavigate }) {
                       <p className="text-[16px] font-bold text-[#64748b]">No leave balance records for this year.</p>
                     </div>
                   ) : (
-                    balances.map((balance) => {
-                      const Icon = ICON_MAP[balance.icon_name] || Umbrella
-                      const bgColor = COLOR_MAP[balance.color_type] || "#e2e8f0"
-                      const leaveKey = balance.id
-                      const textColor = "#2d3748"
+                    balances
+                      .filter(b => b.is_eligible !== false)
+                      .map((balance) => {
+                        const Icon = ICON_MAP[balance.icon_name] || Umbrella
+                        const bgColor = COLOR_MAP[balance.color_type] || "#e2e8f0"
+                        const leaveKey = balance.id
+                        const textColor = "#2d3748"
 
-                      return (
-                        <div key={balance.id} className="rounded-[40px] p-6 shadow-sm relative overflow-hidden flex flex-col justify-center" style={{ backgroundColor: bgColor, width: "185px", minHeight: "220px" }}>
-                          {editingLeave === leaveKey ? (
-                            <div className="absolute top-5 right-5 flex gap-1.5 z-10">
-                              <button onClick={saveEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#2c7356] hover:bg-white/80 transition-colors"><Icons.Check size={14} /></button>
-                              <button onClick={cancelEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#855913] hover:bg-white/80 transition-colors"><Icons.X size={14} /></button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => startEditLeave(balance.id, leaveKey, balance.total_days)}
-                              className="absolute top-6 right-6 w-8 h-8 bg-white/40 rounded-full flex items-center justify-center hover:bg-white/60 transition-colors"
-                            >
-                              <Icons.PenLine size={14} />
-                            </button>
-                          )}
-                          <Icon className="absolute bottom-2 right-2 w-20 h-20 opacity-20 -rotate-12" style={{ color: textColor }} />
-                          <div className="relative z-[1] px-2 mb-2">
-                            <h3 className="font-bold text-[14px] font-fredoka mb-3" style={{ color: textColor }}>{balance.leave_type_name}</h3>
-                            <div className="flex items-baseline gap-1 mb-6">
-                              <span className="text-[48px] font-fredoka font-bold leading-none" style={{ color: textColor }}>
-                                {formatDays(balance.used_days)}
-                              </span>
-                              <span style={{ color: textColor, fontSize: "14px", fontWeight: "bold", opacity: 0.8 }}>
-                                / {editingLeave === leaveKey ? (
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && saveEditLeave()}
-                                    className="w-16 bg-white/60 rounded-lg px-2 py-0.5 text-[16px] font-bold outline-none text-center"
-                                    style={{ color: textColor }}
-                                    autoFocus
-                                  />
-                                ) : `${formatDays(balance.total_days)} days`}
-                              </span>
-                            </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
-                              <div className="h-full rounded-full transition-all" style={{ width: getBarWidth(balance.used_days, balance.total_days), backgroundColor: "rgba(0,0,0,0.6)" }}></div>
+                        return (
+                          <div key={balance.id} className="rounded-[40px] p-6 shadow-sm relative overflow-hidden flex flex-col justify-center" style={{ backgroundColor: bgColor, width: "185px", minHeight: "220px" }}>
+                            {editingLeave === leaveKey ? (
+                              <div className="absolute top-5 right-5 flex gap-1.5 z-10">
+                                <button onClick={saveEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#2c7356] hover:bg-white/80 transition-colors"><Icons.Check size={14} /></button>
+                                <button onClick={cancelEditLeave} className="w-7 h-7 bg-white/60 rounded-full flex items-center justify-center text-[#855913] hover:bg-white/80 transition-colors"><Icons.X size={14} /></button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => startEditLeave(balance.id, leaveKey, balance.total_days)}
+                                className="absolute top-6 right-6 w-8 h-8 bg-white/40 rounded-full flex items-center justify-center hover:bg-white/60 transition-colors"
+                              >
+                                <Icons.PenLine size={14} />
+                              </button>
+                            )}
+                            <Icon className="absolute bottom-2 right-2 w-20 h-20 opacity-20 -rotate-12" style={{ color: textColor }} />
+                            <div className="relative z-[1] px-2 mb-2">
+                              <h3 className="font-bold text-[14px] font-fredoka mb-3" style={{ color: textColor }}>{balance.leave_type_name}</h3>
+                              <div className="flex items-baseline gap-1 mb-6">
+                                <span className="text-[48px] font-fredoka font-bold leading-none" style={{ color: textColor }}>
+                                  {formatDays(balance.used_days)}
+                                </span>
+                                <span style={{ color: textColor, fontSize: "14px", fontWeight: "bold", opacity: 0.8 }}>
+                                  / {editingLeave === leaveKey ? (
+                                    <input
+                                      type="number"
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onKeyDown={(e) => e.key === "Enter" && saveEditLeave()}
+                                      className="w-16 bg-white/60 rounded-lg px-2 py-0.5 text-[16px] font-bold outline-none text-center"
+                                      style={{ color: textColor }}
+                                      autoFocus
+                                    />
+                                  ) : `${formatDays(balance.total_days)} days`}
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
+                                <div className="h-full rounded-full transition-all" style={{ width: getBarWidth(balance.used_days, balance.total_days), backgroundColor: "rgba(0,0,0,0.6)" }}></div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    })
+                        )
+                      })
                   )}
                 </div>
 

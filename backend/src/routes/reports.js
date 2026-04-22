@@ -259,52 +259,65 @@ router.get("/employee-balances", ...guard, async (req, res) => {
 
   try {
     const deptFilterU = getDeptFilter(req, "u", true);
-    const params = [year];
-    if (deptFilterU.param) params.push(deptFilterU.param);
 
+    // 1. Fetch all active employees
     const [employees] = await pool.query(
-      `SELECT
-         u.id AS user_id,
-         u.full_name,
-         u.hire_date,
-         lb.leave_type_id,
-         lt.name AS leave_type_name,
-         lb.total_days,
-         lb.used_days
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN leave_balances lb ON u.id = lb.user_id AND lb.year = ?
-       LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
-       WHERE r.name = 'Employee'
-         AND u.deleted_at IS NULL
-         AND u.is_active = 1
-         ${deptFilterU.sql}
+      `SELECT u.id, u.full_name, u.hire_date 
+       FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE r.name = 'Employee' AND u.deleted_at IS NULL AND u.is_active = 1
+       ${deptFilterU.sql}
        ORDER BY u.full_name ASC`,
-      params
+      deptFilterU.param ? [deptFilterU.param] : []
     );
 
-    // Group by user
-    const usersMap = {};
-    for (const row of employees) {
-      if (!usersMap[row.user_id]) {
-        usersMap[row.user_id] = {
-          user_id: row.user_id,
-          full_name: row.full_name,
-          hire_date: row.hire_date,
-          balances: []
-        };
-      }
-      if (row.leave_type_id) {
-        usersMap[row.user_id].balances.push({
-          leave_type_id: row.leave_type_id,
-          leave_type_name: row.leave_type_name,
-          total_days: row.total_days,
-          used_days: row.used_days
-        });
-      }
+    // 2. Fetch all active leave types
+    const [leaveTypes] = await pool.query(
+      `SELECT id, name, min_service_months FROM leave_types WHERE is_active = 1`
+    );
+
+    // 3. Fetch all existing balances for the given year
+    const [balances] = await pool.query(
+      `SELECT user_id, leave_type_id, total_days, used_days FROM leave_balances WHERE year = ?`,
+      [year]
+    );
+
+    // 4. Map balances for quick lookup
+    const balanceMap = {};
+    for (const b of balances) {
+      balanceMap[`${b.user_id}_${b.leave_type_id}`] = b;
     }
 
-    res.json({ year, employees: Object.values(usersMap) });
+    // 5. Build final response
+    const now = new Date();
+    const result = employees.map(u => {
+      let serviceMonths = 0;
+      if (u.hire_date) {
+        const hireDate = new Date(u.hire_date);
+        serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+      }
+
+      const empBalances = leaveTypes.map(lt => {
+        const bal = balanceMap[`${u.id}_${lt.id}`];
+        const isEligible = serviceMonths >= (lt.min_service_months || 0);
+        return {
+          leave_type_id: lt.id,
+          leave_type_name: lt.name,
+          total_days: bal ? bal.total_days : 0,
+          used_days: bal ? bal.used_days : 0,
+          is_eligible: isEligible
+        };
+      });
+
+      return {
+        user_id: u.id,
+        full_name: u.full_name,
+        hire_date: u.hire_date,
+        balances: empBalances
+      };
+    });
+
+    res.json({ year, employees: result });
   } catch (err) {
     console.error("GET /reports/employee-balances error:", err);
     res.status(500).json({ message: "Internal server error." });

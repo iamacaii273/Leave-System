@@ -119,12 +119,15 @@ export default function Reports({ onNavigate }) {
 
         const loadedBalances = {};
         for (const emp of balRes.data.employees) {
-          // Build a map: leave_type_name -> "used / total" string
+          // Build a map: leave_type_name -> { display, isEligible }
           const balMap = {};
           for (const bal of emp.balances) {
             const usedStr = formatDays(bal.used_days);
             const totalStr = formatDays(bal.total_days);
-            balMap[bal.leave_type_name] = `${usedStr} / ${totalStr}`;
+            balMap[bal.leave_type_name] = {
+              display: `${usedStr} / ${totalStr}`,
+              isEligible: bal.is_eligible
+            };
           }
           loadedBalances[emp.user_id] = {
             id: emp.user_id,
@@ -313,8 +316,12 @@ export default function Reports({ onNavigate }) {
                         </div>
                       </td>
                       {leaveTypeColumns.map(name => {
-                        const val = row.balMap?.[name] || "0 / 0";
+                        const balObj = row.balMap?.[name];
+                        const isEligible = balObj ? balObj.isEligible : true; // default true for types not in balance map if any
+                        const val = isEligible ? (balObj?.display || "0 / 0") : "0 / 0";
+                        
                         const getQuotaStyle = (quota) => {
+                          if (!isEligible) return "text-red-600 font-bold";
                           const parts = quota.split(" / ");
                           if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
                             if (parts[0].trim() === "0") return "text-red-800 font-bold";
