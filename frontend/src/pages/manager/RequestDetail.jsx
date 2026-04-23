@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
+import { useAuth } from "../../contexts/AuthContext"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import {
@@ -94,6 +95,7 @@ const PAGE_SIZE = 2
 export default function RequestDetail({ onNavigate }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -157,7 +159,7 @@ export default function RequestDetail({ onNavigate }) {
   const { request, files = [], history = [], balance } = data;
   const statusStyle = STATUS_STYLES[request?.status?.toLowerCase()] || STATUS_STYLES.pending;
   const { Icon, color: iconColor, bg: iconBg } = resolveLeaveTypeStyle(request?.leave_type_icon, request?.leave_type_color);
-  const canAct = !actionDone && (request?.status === "pending" || request?.status === "acknowledged");
+  const canAct = !actionDone && (request?.status === "pending" || request?.status === "acknowledged") && user?.role === "Manager";
 
   // Pagination
   const totalPages = Math.ceil(history.length / PAGE_SIZE);
