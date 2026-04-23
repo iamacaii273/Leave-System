@@ -72,7 +72,7 @@ router.get("/dashboard", ...guard, async (req, res) => {
              FROM leave_requests lr
              WHERE lr.user_id = u.id
                AND lr.status IN ('approved', 'acknowledged')
-               AND CURDATE() BETWEEN lr.start_date AND lr.end_date
+               AND CURDATE() BETWEEN DATE(lr.start_date) AND DATE(lr.end_date)
            ) THEN 'On Leave'
            ELSE 'Active'
          END AS status
@@ -90,7 +90,7 @@ router.get("/dashboard", ...guard, async (req, res) => {
              FROM leave_requests lr
              WHERE lr.user_id = u.id
                AND lr.status IN ('approved', 'acknowledged')
-               AND CURDATE() BETWEEN lr.start_date AND lr.end_date
+               AND CURDATE() BETWEEN DATE(lr.start_date) AND DATE(lr.end_date)
            ) THEN 0
            ELSE 1
          END,

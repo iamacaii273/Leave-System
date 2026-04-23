@@ -13,7 +13,7 @@ export default function AddEmployee({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  
+
 
   const [form, setForm] = useState({
     fullName: '',
@@ -35,22 +35,26 @@ export default function AddEmployee({ onNavigate }) {
   const [showSuccess, setShowSuccess] = useState(false)
   const [error, setError] = useState('')
 
+  const updateField = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }
+
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const token = localStorage.getItem('token')
         const headers = { 'Authorization': `Bearer ${token}` }
-        
+
         const [rolesRes, posRes, deptRes] = await Promise.all([
           fetch('http://localhost:5000/api/metadata/roles', { headers }).then(r => r.json()),
           fetch('http://localhost:5000/api/metadata/positions', { headers }).then(r => r.json()),
           fetch('http://localhost:5000/api/departments/hr-assigned', { headers }).then(r => r.json())
         ])
-        
+
         const allowedRoles = (rolesRes.roles || []).filter(r => r.name === 'Employee' || r.name === 'Manager')
         setRoles(allowedRoles)
         setPositions(posRes.positions || [])
-        
+
         const depts = deptRes.departments || []
         setHrDepartments(depts)
         if (depts.length > 0) {
@@ -80,10 +84,6 @@ export default function AddEmployee({ onNavigate }) {
       }
     }
   }, [form.role_id, positions])
-
-  const updateField = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }))
-  }
 
   const expectedPhoneLength = {
     '+1': 10,
@@ -304,7 +304,7 @@ export default function AddEmployee({ onNavigate }) {
                 {error}
               </div>
             )}
-            
+
             {/* Actions */}
             <div className="flex items-center justify-end gap-6 mb-2">
               <button
@@ -319,8 +319,8 @@ export default function AddEmployee({ onNavigate }) {
                 onClick={handleSave}
                 disabled={!isFormValid}
                 className={`rounded-full !px-8 !py-4 flex items-center gap-2 font-bold text-[16px] transition-all shadow-sm ${isFormValid
-                    ? 'text-[#2c7356] cursor-pointer hover:opacity-90'
-                    : 'text-[#94a3b8] cursor-not-allowed opacity-50'
+                  ? 'text-[#2c7356] cursor-pointer hover:opacity-90'
+                  : 'text-[#94a3b8] cursor-not-allowed opacity-50'
                   }`}
                 style={{ backgroundColor: isFormValid ? '#dcf5eb' : '#e2e8f0' }}
               >

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as Icons from "lucide-react"
-import { Building, Mail, Phone, Calendar as CalendarIcon, Briefcase, UserCog, User, Shield, PenLine, Bell, X, UserPlus, CheckCircle, ChevronDown, Image as ImageIcon, Trash2, Umbrella, Thermometer, Users as UsersIcon, Check, Plane, Smile, HeartHandshake, PartyPopper, MoreHorizontal } from "lucide-react"
+import { Building, Mail, Phone, Calendar as CalendarIcon, Briefcase, UserCog, User, Shield, PenLine, Bell, X, UserPlus, CheckCircle, ChevronDown, Image as ImageIcon, Trash2, Umbrella, Thermometer, Users as UsersIcon, Check, Plane, Smile, HeartHandshake, PartyPopper, MoreHorizontal, Folder } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
@@ -8,22 +8,22 @@ import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
 // Color name → hex background (mirrors LeaveType.jsx colorStyles)
 const COLOR_MAP = {
-  blue:   "#a3dfff",
-  pink:   "#ffafe3",
+  blue: "#a3dfff",
+  pink: "#ffafe3",
   orange: "#fac47f",
-  green:  "#B1EFD8",
+  green: "#B1EFD8",
 }
 
 // Icon name (stored in DB lowercase) → Lucide component
 const ICON_MAP = {
-  umbrella:    Umbrella,
+  umbrella: Umbrella,
   thermometer: Thermometer,
-  user:        UsersIcon,
-  plane:       Plane,
-  smile:       Smile,
-  heart:       HeartHandshake,
-  party:       PartyPopper,
-  more:        MoreHorizontal,
+  user: UsersIcon,
+  plane: Plane,
+  smile: Smile,
+  heart: HeartHandshake,
+  party: PartyPopper,
+  more: MoreHorizontal,
 }
 
 function getInitials(name = "") {
@@ -115,7 +115,7 @@ function getBalanceTheme(name = "") {
 
   if (normalized.includes("personal")) {
     return {
-      Icon: Users,
+      Icon: UsersIcon,
       cardClass: "bg-[#ff9bc9]",
       textClass: "text-[#8e3966]",
       trackClass: "bg-[#d470a1]",
@@ -204,7 +204,7 @@ export default function EmployeeProfile({ onNavigate }) {
     "July", "August", "September", "October", "November", "December"
   ]
   const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"]
-  
+
   function getDaysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
   function getFirstDayOfMonth(y, m) {
     const d = new Date(y, m, 1).getDay()
@@ -316,9 +316,9 @@ export default function EmployeeProfile({ onNavigate }) {
   const [savingAccess, setSavingAccess] = useState(false)
 
   const ROLE_IDS = {
-    "Employee":    "rl000001-0000-0000-0000-000000000001",
-    "Manager":     "rl000001-0000-0000-0000-000000000002",
-    "HR":          "rl000001-0000-0000-0000-000000000003",
+    "Employee": "rl000001-0000-0000-0000-000000000001",
+    "Manager": "rl000001-0000-0000-0000-000000000002",
+    "HR": "rl000001-0000-0000-0000-000000000003",
     "Super Admin": "rl000001-0000-0000-0000-000000000004",
   }
 
@@ -338,11 +338,11 @@ export default function EmployeeProfile({ onNavigate }) {
       const res = await api.put(`/users/${id}`, payload)
       const updatedUser = res.data.user
       setEmployee(updatedUser)
-      
+
       // Re-fetch balances to update eligibility and auto-provision new types if tenure increased
       const balanceRes = await api.get(`/leave-balances/user/${id}`)
       setBalances(balanceRes.data?.balances || [])
-      
+
       setShowAccessModal(false)
     } catch (err) {
       alert(err.response?.data?.message || "Failed to save access settings.")
@@ -784,23 +784,23 @@ export default function EmployeeProfile({ onNavigate }) {
                         const first = getFirstDayOfMonth(calViewYear, calViewMonth);
                         const cells = [];
                         const prevMonthDays = getDaysInMonth(calViewMonth === 0 ? calViewYear - 1 : calViewYear, calViewMonth === 0 ? 11 : calViewMonth - 1);
-                        
+
                         for (let i = first - 1; i >= 0; i--) cells.push({ d: prevMonthDays - i, current: false });
                         for (let i = 1; i <= days; i++) cells.push({ d: i, current: true });
                         while (cells.length < 35 || cells.length % 7 !== 0) cells.push({ d: cells.length - days - first + 2, current: false });
 
                         return cells.map((c, idx) => {
                           if (!c.current) return <div key={idx} className="py-2 text-[12px] text-[#cbd5e1] font-semibold opacity-50">{c.d}</div>;
-                          
+
                           const dObj = new Date(calViewYear, calViewMonth, c.d);
-                          const isSelected = accessSettings.hireDate && 
-                                           new Date(accessSettings.hireDate).getDate() === c.d && 
-                                           new Date(accessSettings.hireDate).getMonth() === calViewMonth && 
-                                           new Date(accessSettings.hireDate).getFullYear() === calViewYear;
-                          
-                          const isToday = new Date().getDate() === c.d && 
-                                        new Date().getMonth() === calViewMonth && 
-                                        new Date().getFullYear() === calViewYear;
+                          const isSelected = accessSettings.hireDate &&
+                            new Date(accessSettings.hireDate).getDate() === c.d &&
+                            new Date(accessSettings.hireDate).getMonth() === calViewMonth &&
+                            new Date(accessSettings.hireDate).getFullYear() === calViewYear;
+
+                          const isToday = new Date().getDate() === c.d &&
+                            new Date().getMonth() === calViewMonth &&
+                            new Date().getFullYear() === calViewYear;
 
                           return (
                             <div
@@ -843,10 +843,10 @@ export default function EmployeeProfile({ onNavigate }) {
                 onClick={handleSaveAccess}
                 disabled={savingAccess || !accessSettings.hireDate || !accessSettings.positionId}
                 className="flex-1 !py-3.5 rounded-full font-bold transition-colors"
-                style={{ 
-                  backgroundColor: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#e2e8f0" : "#dcf5eb", 
-                  color: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#94a3b8" : "#2c7356", 
-                  fontSize: "15px" 
+                style={{
+                  backgroundColor: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#e2e8f0" : "#dcf5eb",
+                  color: (savingAccess || !accessSettings.hireDate || !accessSettings.positionId) ? "#94a3b8" : "#2c7356",
+                  fontSize: "15px"
                 }}
               >
                 {savingAccess ? "Saving..." : "Save Changes"}
