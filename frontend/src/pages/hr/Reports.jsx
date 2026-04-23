@@ -427,7 +427,7 @@ export default function Reports({ onNavigate }) {
               <div className="relative" ref={pickerRef}>
                 <button
                   onClick={() => setShowDatePicker(!showDatePicker)}
-                  className="px-4 py-2 rounded-lg text-[13px] font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                  className="!px-2 !py-2 rounded-lg text-[13px] font-bold flex items-center gap-2 cursor-pointer transition-colors"
                   style={appliedRange
                     ? { backgroundColor: '#1f3747', color: '#ffffff' }
                     : { backgroundColor: '#f4f7f9', color: '#64748b' }}
