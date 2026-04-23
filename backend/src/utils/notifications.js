@@ -68,7 +68,42 @@ async function notifyManagersNewRequest(leaveRequestId, employeeName, department
     }
 }
 
+/**
+ * Notify all HR and Managers of a department when a leave request is cancelled
+ */
+async function notifyManagersCancelledRequest(leaveRequestId, employeeName, departmentId) {
+    try {
+        const [managers] = await pool.query(
+            `SELECT u.id FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE u.department_id = ? AND r.name = 'Manager'`,
+            [departmentId]
+        );
+
+        const [hrs] = await pool.query(
+            `SELECT hd.user_id as id FROM hr_departments hd 
+       WHERE hd.department_id = ?`,
+            [departmentId]
+        );
+
+        const recipients = [...new Set([...managers, ...hrs].map(u => u.id))];
+
+        for (const userId of recipients) {
+            await createNotification({
+                user_id: userId,
+                title: 'Leave Request Cancelled',
+                message: `${employeeName} has cancelled their leave request.`,
+                type: 'leave_cancelled',
+                reference_id: leaveRequestId
+            });
+        }
+    } catch (error) {
+        console.error('notifyManagersCancelledRequest error:', error);
+    }
+}
+
 module.exports = {
     createNotification,
-    notifyManagersNewRequest
+    notifyManagersNewRequest,
+    notifyManagersCancelledRequest
 };

@@ -671,14 +671,23 @@ router.put(
     try {
       // Verify the target user exists and is not soft-deleted
       const [userRows] = await pool.query(
-        `SELECT id FROM users
-       WHERE  id = ?
-         AND  deleted_at IS NULL`,
+        `SELECT u.id, r.name as role_name 
+         FROM users u
+         JOIN roles r ON u.role_id = r.id
+         WHERE u.id = ? AND u.deleted_at IS NULL`,
         [id],
       );
 
       if (userRows.length === 0) {
         return res.status(404).json({ message: "User not found." });
+      }
+
+      const targetUser = userRows[0];
+
+      // Security Check: HR cannot edit Super Admin or other HR (if you want to restrict HR further)
+      // For now, let's at least prevent HR from editing Super Admin.
+      if (req.user.role === "HR" && targetUser.role_name === "Super Admin") {
+        return res.status(403).json({ message: "HR does not have permission to edit Super Admin accounts." });
       }
 
       // Duplicate email check — exclude target id

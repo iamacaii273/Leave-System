@@ -23,6 +23,7 @@ router.get('/me', verifyToken, async (req, res) => {
       serviceMonths =
         (now.getFullYear() - hireDate.getFullYear()) * 12 +
         (now.getMonth() - hireDate.getMonth());
+      if (now.getDate() < hireDate.getDate()) serviceMonths--;
     }
 
     // 2. Fetch all active leave types
@@ -138,15 +139,15 @@ router.get(
         const now = new Date();
         serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       }
-      
+
       const [activeTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1');
       const [existingBalances] = await pool.query('SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?', [userId, year]);
       const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
-      
+
       const missingTypes = activeTypes.filter(
         t => !existingTypeIds.has(t.id) && serviceMonths >= t.min_service_months
       );
-      
+
       if (missingTypes.length > 0) {
         const inserts = missingTypes.map(t => [
           uuidv4(), userId, t.id, year, t.default_days_per_year, 0, t.default_days_per_year,

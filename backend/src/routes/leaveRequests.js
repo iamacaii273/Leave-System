@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const pool = require("../db");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { logAction } = require("../utils/logger");
-const { createNotification, notifyManagersNewRequest } = require("../utils/notifications");
+const { createNotification, notifyManagersNewRequest, notifyManagersCancelledRequest } = require("../utils/notifications");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -118,7 +118,8 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       }
       const hireDate = new Date(hireDateStr);
       const now = new Date();
-      const serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+      let serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+      if (now.getDate() < hireDate.getDate()) serviceMonths--;
       if (serviceMonths < minMonths) {
         return res.status(403).json({
           message: `You must have at least ${minMonths} months of service to use this leave type (${leaveType.name}). Your current service is ${serviceMonths} month(s).`
@@ -806,7 +807,10 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        "SELECT id, user_id, status, total_days, leave_type_id, start_date FROM leave_requests WHERE id = ?",
+        `SELECT lr.id, lr.user_id, u.full_name, u.department_id, lr.status 
+         FROM leave_requests lr
+         JOIN users u ON lr.user_id = u.id
+         WHERE lr.id = ?`,
         [id],
       );
 
@@ -822,11 +826,9 @@ router.put(
 
       if (request.status !== "pending") {
         return res.status(400).json({
-          message: `Only pending requests can be cancelled.Current status: '${request.status}'.`,
+          message: `Only pending requests can be cancelled. Current status: '${request.status}'.`,
         });
       }
-
-      const requestYear = new Date(request.start_date).getFullYear();
 
       await pool.query(
         `UPDATE leave_requests
@@ -840,6 +842,11 @@ router.put(
         "request_cancelled",
         `Leave request ${id} cancelled by user ${req.user.id}.`,
       );
+
+      // Notify Managers
+      if (request.department_id) {
+        await notifyManagersCancelledRequest(id, request.full_name, request.department_id);
+      }
 
       res.json({ message: "Leave request cancelled successfully." });
     } catch (err) {
