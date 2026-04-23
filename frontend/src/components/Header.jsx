@@ -168,10 +168,17 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
                           onClick={() => {
                             if (!notif.is_read) handleMarkAsRead(notif.id)
 
-                            // Navigate only if the user is an Employee and event is leave approval/rejection/acknowledged
-                            if (notif.reference_id && user?.role === 'Employee') {
-                              if (['leave_approved', 'leave_rejected', 'leave_acknowledged'].includes(notif.type)) {
-                                onNavigate && onNavigate(`requests/${notif.reference_id}`)
+                            // Navigate based on role and notification type
+                            if (notif.reference_id) {
+                              const rolePath = user?.role?.toLowerCase().replace(' ', '');
+                              if (user?.role === 'Employee') {
+                                if (['leave_approved', 'leave_rejected', 'leave_acknowledged'].includes(notif.type)) {
+                                  onNavigate && onNavigate(`requests/${notif.reference_id}`)
+                                }
+                              } else if (['Manager', 'HR'].includes(user?.role)) {
+                                if (notif.type === 'new_leave_request') {
+                                  onNavigate && onNavigate(`requests/${notif.reference_id}`)
+                                }
                               }
                             }
 
