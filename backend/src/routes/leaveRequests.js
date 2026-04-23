@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const pool = require("../db");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { logAction } = require("../utils/logger");
+const { createNotification, notifyManagersNewRequest } = require("../utils/notifications");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -119,8 +120,8 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       const now = new Date();
       const serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       if (serviceMonths < minMonths) {
-        return res.status(403).json({ 
-          message: `You must have at least ${minMonths} months of service to use this leave type (${leaveType.name}). Your current service is ${serviceMonths} month(s).` 
+        return res.status(403).json({
+          message: `You must have at least ${minMonths} months of service to use this leave type (${leaveType.name}). Your current service is ${serviceMonths} month(s).`
         });
       }
     }
@@ -229,6 +230,12 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       "request_submitted",
       `Leave request submitted: ${parsedDays} day(s) of leave type ${leave_type_id} from ${start_date} to ${end_date}.`,
     );
+
+    // Notify Managers/HR
+    const [userRows] = await pool.query('SELECT full_name, department_id FROM users WHERE id = ?', [req.user.id]);
+    if (userRows.length > 0) {
+      await notifyManagersNewRequest(id, userRows[0].full_name, userRows[0].department_id);
+    }
 
     res.status(201).json({
       message: "Leave request submitted successfully.",
@@ -535,7 +542,7 @@ router.get(
       if (req.user.role === "Manager") {
         const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
         const deptIds = managedDepts.map(d => d.department_id);
-        
+
         if (deptIds.length > 0) {
           conditions.push(`u.department_id IN (?)`);
           params.push(deptIds);
@@ -546,7 +553,7 @@ router.get(
       } else if (req.user.role === "HR") {
         const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
         const deptIds = managedDepts.map(d => d.department_id);
-        
+
         if (deptIds.length > 0) {
           conditions.push(`(u.department_id IN (?) OR u.department_id IS NULL)`);
           params.push(deptIds);
@@ -661,6 +668,15 @@ router.put(
         `Leave request ${id} acknowledged (sick leave) by ${req.user.id}.`,
       );
 
+      // Notify Employee
+      await createNotification({
+        user_id: request.user_id,
+        title: 'Leave Request Acknowledged',
+        message: `Your leave request for ${request.leave_type_name} has been acknowledged.`,
+        type: 'leave_acknowledged',
+        reference_id: id
+      });
+
       res.json({ message: "Leave request acknowledged successfully." });
     } catch (err) {
       console.error("Acknowledge leave request error:", err);
@@ -683,9 +699,10 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.status, lr.start_date, u.department_id
+        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.status, lr.start_date, u.department_id, lt.name AS leave_type_name
          FROM leave_requests lr
          JOIN users u ON lr.user_id = u.id
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
          WHERE lr.id = ?`,
         [id],
       );
@@ -731,6 +748,15 @@ router.put(
         `Leave request ${id} approved by user ${req.user.id}.`,
       );
 
+      // Notify Employee
+      await createNotification({
+        user_id: request.user_id,
+        title: 'Leave Request Approved',
+        message: `Your leave request for ${request.leave_type_name} has been approved!`,
+        type: 'leave_approved',
+        reference_id: id
+      });
+
       res.json({ message: "Leave request approved successfully." });
     } catch (err) {
       console.error("Approve leave request error:", err);
@@ -753,9 +779,10 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        `SELECT lr.id, lr.user_id, lr.status, lr.total_days, lr.leave_type_id, lr.start_date, u.department_id
+        `SELECT lr.id, lr.user_id, lr.status, lr.total_days, lr.leave_type_id, lr.start_date, u.department_id, lt.name AS leave_type_name
          FROM leave_requests lr
          JOIN users u ON lr.user_id = u.id
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
          WHERE lr.id = ?`,
         [id],
       );
@@ -793,6 +820,15 @@ router.put(
         "request_rejected",
         `Leave request ${id} rejected by user ${req.user.id}.`,
       );
+
+      // Notify Employee
+      await createNotification({
+        user_id: request.user_id,
+        title: 'Leave Request Rejected',
+        message: `Your leave request for ${request.leave_type_name} was rejected.`,
+        type: 'leave_rejected',
+        reference_id: id
+      });
 
       res.json({ message: "Leave request rejected successfully." });
     } catch (err) {

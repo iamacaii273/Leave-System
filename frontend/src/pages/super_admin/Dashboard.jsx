@@ -13,9 +13,6 @@ export default function SuperAdminDashboard({ onNavigate }) {
   const [filterStatus, setFilterStatus] = useState("all")
   const itemsPerPage = 8
 
-  // Add user form
-  const [newUser, setNewUser] = useState({ fullName: '', email: '', username: '', role: 'Employee', password: '' })
-
   const [allUsers, setAllUsers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -112,27 +109,8 @@ export default function SuperAdminDashboard({ onNavigate }) {
     { label: 'TOTAL RESIGNED', value: totalResigned.toLocaleString(), icon: UserRoundX, iconBg: '#fde2e4', iconColor: '#b5283d' },
   ]
 
-  // Get greeting
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-
-  const handleAddUser = () => {
-    if (!newUser.fullName.trim() || !newUser.email.trim() || !newUser.username.trim() || !newUser.password.trim()) return
-    const initials = newUser.fullName.split(' ').map(n => n[0]).join('').toUpperCase()
-    const colors = ['#bfeadd', '#fef08a', '#c4b5fd', '#fca5a5', '#bae6fd', '#fed7aa', '#fbcfe8']
-    setAllUsers(prev => [...prev, {
-      id: Date.now(),
-      name: newUser.fullName,
-      email: newUser.email,
-      role: newUser.role,
-      status: 'Active',
-      img: null,
-      initial: initials.slice(0, 2),
-      initialBg: colors[Math.floor(Math.random() * colors.length)]
-    }])
-    setNewUser({ fullName: '', email: '', username: '', role: 'Employee', password: '' })
-    setShowAddModal(false)
-  }
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">
