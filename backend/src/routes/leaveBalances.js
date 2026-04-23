@@ -25,9 +25,10 @@ router.get('/me', verifyToken, async (req, res) => {
         (now.getMonth() - hireDate.getMonth());
     }
 
-    // 2. Fetch all active leave types
+    // 2. Fetch all relevant active leave types (Global or matching user's department)
     const [activeTypes] = await pool.query(
-      'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1'
+      'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1 AND (department_id IS NULL OR department_id = ?)',
+      [req.user.department_id || null]
     );
 
     // 3. Fetch existing balances for this year
@@ -122,7 +123,7 @@ router.get(
     try {
       // Verify the target user exists
       const [userRows] = await pool.query(
-        'SELECT id, full_name, email FROM users WHERE id = ?',
+        'SELECT id, full_name, email, department_id FROM users WHERE id = ?',
         [userId],
       )
 
@@ -138,15 +139,19 @@ router.get(
         const now = new Date();
         serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       }
-      
-      const [activeTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1');
+
+      const targetUser = userRows[0];
+      const [activeTypes] = await pool.query(
+        'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1 AND (department_id IS NULL OR department_id = ?)',
+        [targetUser.department_id || null]
+      );
       const [existingBalances] = await pool.query('SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?', [userId, year]);
       const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
-      
+
       const missingTypes = activeTypes.filter(
         t => !existingTypeIds.has(t.id) && serviceMonths >= t.min_service_months
       );
-      
+
       if (missingTypes.length > 0) {
         const inserts = missingTypes.map(t => [
           uuidv4(), userId, t.id, year, t.default_days_per_year, 0, t.default_days_per_year,
