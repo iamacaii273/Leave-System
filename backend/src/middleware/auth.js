@@ -1,13 +1,15 @@
 const jwt = require('jsonwebtoken')
+const pool = require('../db')
 
 /**
  * Middleware: verifyToken
  * Protects routes by requiring a valid JWT in the Authorization header.
  * Attaches the decoded user payload to req.user.
+ * Also checks that the user is still active (not resigned/deactivated).
  *
  * Usage: router.get('/protected', verifyToken, (req, res) => { ... })
  */
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers['authorization']
 
   if (!authHeader) {
@@ -25,6 +27,21 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     req.user = decoded // { id, email, role, role_id, iat, exp }
+
+    // Real-time check: ensure user is still active and not deleted
+    const [rows] = await pool.query(
+      'SELECT is_active FROM users WHERE id = ? AND deleted_at IS NULL',
+      [decoded.id]
+    )
+
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Account no longer exists. Please contact HR.' })
+    }
+
+    if (!rows[0].is_active) {
+      return res.status(403).json({ message: 'Account has been deactivated. Please contact HR.' })
+    }
+
     next()
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

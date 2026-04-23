@@ -683,7 +683,7 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.status, lr.start_date, u.department_id
+        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.status, lr.start_date, u.department_id, u.is_active
          FROM leave_requests lr
          JOIN users u ON lr.user_id = u.id
          WHERE lr.id = ?`,
@@ -695,6 +695,11 @@ router.put(
       }
 
       const request = rows[0];
+
+      // Check if employee is still active
+      if (!request.is_active) {
+        return res.status(400).json({ message: "Cannot approve leave for a resigned/deactivated employee." });
+      }
 
       // Department check for Manager
       const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
