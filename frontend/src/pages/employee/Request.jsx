@@ -216,20 +216,21 @@ export default function Request({ onNavigate }) {
   }
 
   const parsedLeaveTypes = useMemo(() => {
-    // We only show leave types that the user actually has a balance for
-    // (the backend /me endpoint auto-provisions eligible ones based on service months!)
-    return leaveBalances.map(bal => {
-      const dbType = dbLeaveTypes.find(t => t.id === bal.leave_type_id)
-      const colors = getColorConfig(dbType?.color_type)
-      return {
-        id: bal.leave_type_id,
-        label: bal.leave_type_name,
-        desc: dbType?.description || "Request time off for this category.",
-        Icon: getIconComponent(dbType?.icon_name),
-        color: colors.color,
-        bg: colors.bg
-      }
-    })
+    // We only show leave types that the user is actually eligible for
+    return leaveBalances
+      .filter(bal => bal.is_eligible)
+      .map(bal => {
+        const dbType = dbLeaveTypes.find(t => t.id === bal.leave_type_id)
+        const colors = getColorConfig(dbType?.color_type)
+        return {
+          id: bal.leave_type_id,
+          label: bal.leave_type_name,
+          desc: dbType?.description || "Request time off for this category.",
+          Icon: getIconComponent(dbType?.icon_name),
+          color: colors.color,
+          bg: colors.bg
+        }
+      })
   }, [leaveBalances, dbLeaveTypes])
 
   /* ─── calendar grid ─── */
@@ -609,15 +610,15 @@ export default function Request({ onNavigate }) {
             <X size={18} strokeWidth={2.5} />
             Discard Request
           </button>
-          
+
           <div className="flex items-center gap-4">
             {submitError && (
               <span className="text-[#f56464] text-[13px] font-bold">
                 {submitError}
               </span>
             )}
-            <button 
-              onClick={handleSubmit} 
+            <button
+              onClick={handleSubmit}
               disabled={!leaveType || !startDate || !endDate || duration.totalHours <= 0}
               className="!bg-[#133251] text-white !px-8 !py-4 rounded-full text-[14px] font-bold hover:bg-[#081830] transition-colors flex items-center gap-2.5 shadow-lg shadow-[#0a1e3d]/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >

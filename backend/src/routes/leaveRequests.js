@@ -247,56 +247,6 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUT /:id/cancel — Cancel own pending leave request
-// Protected: verifyToken
-// ─────────────────────────────────────────────────────────────────────────────
-router.put("/:id/cancel", verifyToken, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const [rows] = await pool.query(
-      "SELECT id, user_id, status, total_days, leave_type_id, start_date FROM leave_requests WHERE id = ?",
-      [id],
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "Leave request not found." });
-    }
-
-    const request = rows[0];
-
-    if (request.user_id !== req.user.id) {
-      return res
-        .status(403)
-        .json({ message: "You can only cancel your own leave requests." });
-    }
-
-    if (request.status !== "pending") {
-      return res.status(400).json({
-        message: `Only pending requests can be cancelled. Current status: '${request.status}'.`,
-      });
-    }
-
-    const requestYear = new Date(request.start_date).getFullYear();
-
-    await pool.query(
-      "UPDATE leave_requests SET status = 'cancelled' WHERE id = ?",
-      [id],
-    );
-
-    await logAction(
-      req.user.id,
-      "request_cancelled",
-      `Leave request ${id} cancelled by the requester.`,
-    );
-
-    res.json({ message: "Leave request cancelled successfully." });
-  } catch (err) {
-    console.error("Cancel leave request error:", err);
-    res.status(500).json({ message: "Internal server error." });
-  }
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /team — Get leave requests for employees (Manager's team view)
@@ -750,14 +700,14 @@ router.put(
       await logAction(
         req.user.id,
         "request_approved",
-        `Leave request ${ id } approved by user ${ req.user.id }.`,
+        `Leave request ${id} approved by user ${req.user.id}.`,
       );
 
       // Notify Employee
       await createNotification({
         user_id: request.user_id,
         title: 'Leave Request Approved',
-        message: `Your leave request for ${ request.leave_type_name } has been approved!`,
+        message: `Your leave request for ${request.leave_type_name} has been approved!`,
         type: 'leave_approved',
         reference_id: id
       });
@@ -823,14 +773,14 @@ router.put(
       await logAction(
         req.user.id,
         "request_rejected",
-        `Leave request ${ id } rejected by user ${ req.user.id }.`,
+        `Leave request ${id} rejected by user ${req.user.id}.`,
       );
 
       // Notify Employee
       await createNotification({
         user_id: request.user_id,
         title: 'Leave Request Rejected',
-        message: `Your leave request for ${ request.leave_type_name } was rejected.`,
+        message: `Your leave request for ${request.leave_type_name} was rejected.`,
         type: 'leave_rejected',
         reference_id: id
       });
@@ -850,7 +800,6 @@ router.put(
 router.put(
   "/:id/cancel",
   verifyToken,
-  requireRole("Employee"),
   async (req, res) => {
     const { id } = req.params;
     const { cancel_reason } = req.body;
@@ -889,7 +838,7 @@ router.put(
       await logAction(
         req.user.id,
         "request_cancelled",
-        `Leave request ${ id } cancelled by user ${ req.user.id }.`,
+        `Leave request ${id} cancelled by user ${req.user.id}.`,
       );
 
       res.json({ message: "Leave request cancelled successfully." });

@@ -12,11 +12,11 @@ import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
-  pending:      { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-  approved:     { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
-  rejected:     { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
+  pending: { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+  approved: { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
+  rejected: { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
   acknowledged: { bg: "#dbeafe", text: "#1e3a8a", border: "#93c5fd" },
-  cancelled:    { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+  cancelled: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
 }
 
 // getIconData replaced by resolveLeaveTypeStyle from leaveTypeUtils
@@ -40,14 +40,14 @@ function isSameDayStr(a, b) {
 function formatDurationText(totalDays) {
   if (!totalDays) return "—"
   const totalHours = totalDays * 8
-  const days  = Math.floor(totalHours / 8)
-  const rem   = totalHours - days * 8
+  const days = Math.floor(totalHours / 8)
+  const rem = totalHours - days * 8
   const hours = Math.floor(rem)
-  const mins  = Math.round((rem - hours) * 60)
+  const mins = Math.round((rem - hours) * 60)
   const parts = []
-  if (days  > 0) parts.push(`${days} Day${days !== 1 ? "s" : ""}`)
+  if (days > 0) parts.push(`${days} Day${days !== 1 ? "s" : ""}`)
   if (hours > 0) parts.push(`${hours} Hour${hours !== 1 ? "s" : ""}`)
-  if (mins  > 0) parts.push(`${mins} Minute${mins !== 1 ? "s" : ""}`)
+  if (mins > 0) parts.push(`${mins} Minute${mins !== 1 ? "s" : ""}`)
   return parts.join(", ") || "< 1 Hour"
 }
 function formatFileSize(bytes) {
@@ -95,15 +95,15 @@ export default function RequestDetail({ onNavigate }) {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const [data,    setData]    = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(null)
+  const [error, setError] = useState(null)
   const [comment, setComment] = useState("")
   const [histPage, setHistPage] = useState(1)
 
-  const [actionLoading,   setActionLoading]   = useState(null)
+  const [actionLoading, setActionLoading] = useState(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
-  const [actionDone,      setActionDone]      = useState(false)
+  const [actionDone, setActionDone] = useState(false)
 
   // Button hover state
   const [appHover, setAppHover] = useState(false)
@@ -273,11 +273,11 @@ export default function RequestDetail({ onNavigate }) {
               const variant = typeName.includes("sick")
                 ? { bg: "#fcaf85ff", text: "#394856", barBg: "rgba(57,72,86,0.2)", Icon: Thermometer }
                 : typeName.includes("personal")
-                ? { bg: "#ffabdf",   text: "#394856", barBg: "rgba(57,72,86,0.2)", Icon: Users }
-                : { bg: "#aedffb",   text: "#185b48", barBg: "rgba(24,91,72,0.2)", Icon: Umbrella }
-              const used  = Math.round(Number(balance.used_days))
+                  ? { bg: "#ffabdf", text: "#394856", barBg: "rgba(57,72,86,0.2)", Icon: Users }
+                  : { bg: "#aedffb", text: "#185b48", barBg: "rgba(24,91,72,0.2)", Icon: Umbrella }
+              const used = Math.round(Number(balance.used_days))
               const total = Math.round(Number(balance.total_days))
-              const pct   = total > 0 ? (used / total) * 100 : 0
+              const pct = total > 0 ? (used / total) * 100 : 0
               const WIcon = variant.Icon
               return (
                 <div style={{
@@ -290,7 +290,7 @@ export default function RequestDetail({ onNavigate }) {
                 }}>
                   <div style={{ position: "relative", zIndex: 1, color: variant.text }}>
                     <p style={{ fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>
-                       Leave Quota
+                      Leave Quota
                     </p>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "2px" }}>
                       <span style={{ fontSize: "48px", fontWeight: 700, fontFamily: "Fredoka, sans-serif", letterSpacing: "0.02em", lineHeight: 1 }}>
@@ -341,11 +341,11 @@ export default function RequestDetail({ onNavigate }) {
           </div>
 
           {(request.reject_reason || request.manager_note) && !canAct && (
-            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: request.status === "rejected" ? "#fee2e2" : "#f0fdf4", borderLeft: `4px solid ${request.status === "rejected" ? "#f56464" : "#16a34a"}` }}>
-              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: request.status === "rejected" ? "#991b1b" : "#166534", marginBottom: "4px" }}>
-                Manager's {request.status === "rejected" ? "Rejection Reason" : "Note"}
+            <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "12px", background: request.status === "rejected" || request.status === "cancelled" ? "#fee2e2" : "#f0fdf4", borderLeft: `4px solid ${request.status === "rejected" || request.status === "cancelled" ? "#f56464" : "#16a34a"}` }}>
+              <p style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: request.status === "rejected" || request.status === "cancelled" ? "#991b1b" : "#166534", marginBottom: "4px" }}>
+                {request.status === "cancelled" ? "Cancellation Note" : (request.status === "rejected" ? "Manager's Rejection Reason" : "Manager's Note")}
               </p>
-              <p style={{ fontSize: "13px", color: request.status === "rejected" ? "#991b1b" : "#166534", fontStyle: "italic" }}>
+              <p style={{ fontSize: "13px", color: request.status === "rejected" || request.status === "cancelled" ? "#991b1b" : "#166534", fontStyle: "italic" }}>
                 {request.reject_reason || request.manager_note}
               </p>
             </div>
@@ -506,8 +506,8 @@ export default function RequestDetail({ onNavigate }) {
                 {actionLoading === "approve"
                   ? "Approving…"
                   : request.status === "acknowledged"
-                  ? "Confirm Approval"
-                  : "Approve Request"}
+                    ? "Confirm Approval"
+                    : "Approve Request"}
               </button>
 
               {/* Reject — hidden for acknowledged requests */}

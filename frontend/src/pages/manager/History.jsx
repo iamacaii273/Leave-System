@@ -6,11 +6,11 @@ import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
-  approved:     { bg: "#0cf1aa", text: "#185b48" },
-  rejected:     { bg: "#f56464", text: "#ffffff" },
+  approved: { bg: "#0cf1aa", text: "#185b48" },
+  rejected: { bg: "#f56464", text: "#ffffff" },
   acknowledged: { bg: "#93c5fd", text: "#1e3a8a" },
-  pending:      { bg: "#fee481", text: "#6b5413" },
-  cancelled:    { bg: "#e2e8f0", text: "#475569" },
+  pending: { bg: "#fee481", text: "#6b5413" },
+  cancelled: { bg: "#e2e8f0", text: "#475569" },
 }
 
 // getIconData replaced by resolveLeaveTypeStyle from leaveTypeUtils
@@ -21,35 +21,35 @@ function formatDateShort(ds) {
 function isSameDayStr(a, b) {
   const d1 = new Date(a), d2 = new Date(b)
   return d1.getFullYear() === d2.getFullYear() &&
-         d1.getMonth()    === d2.getMonth()    &&
-         d1.getDate()     === d2.getDate()
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
 }
 function formatDurationText(totalDays) {
   const totalHours = totalDays * 8
-  const days  = Math.floor(totalHours / 8)
-  const rem   = totalHours - days * 8
+  const days = Math.floor(totalHours / 8)
+  const rem = totalHours - days * 8
   const hours = Math.floor(rem)
-  const mins  = Math.round((rem - hours) * 60)
+  const mins = Math.round((rem - hours) * 60)
   const parts = []
-  if (days  > 0) parts.push(`${days} Working Day${days !== 1 ? "s" : ""}`)
+  if (days > 0) parts.push(`${days} Working Day${days !== 1 ? "s" : ""}`)
   else if (hours > 0) parts.push(`${hours}h`)
-  if (mins  > 0) parts.push(`${mins}m`)
+  if (mins > 0) parts.push(`${mins}m`)
   return parts.join(" ") || "< 1h"
 }
 
 // Left accent color per status
 const ACCENT = {
-  approved:     "#0cf1aa",
-  rejected:     "#f56464",
+  approved: "#0cf1aa",
+  rejected: "#f56464",
   acknowledged: "#93c5fd",
-  cancelled:    "#e2e8f0",
-  pending:      "#fee481",
+  cancelled: "#e2e8f0",
+  pending: "#fee481",
 }
 
 // ─── History Row ──────────────────────────────────────────────────────────────
 function HistoryRow({ req, onNavigate }) {
   const { Icon, color, bg } = resolveLeaveTypeStyle(req.leave_type_icon, req.leave_type_color)
-  const style  = STATUS_STYLES[req.status?.toLowerCase()] || STATUS_STYLES.pending
+  const style = STATUS_STYLES[req.status?.toLowerCase()] || STATUS_STYLES.pending
   const accent = ACCENT[req.status?.toLowerCase()] || "#e2e8f0"
 
   const dateRange = isSameDayStr(req.start_date, req.end_date)
@@ -57,7 +57,7 @@ function HistoryRow({ req, onNavigate }) {
     : `${formatDateShort(req.start_date)} – ${formatDateShort(req.end_date)}`
 
   return (
-    <div 
+    <div
       onClick={() => onNavigate && onNavigate(`requests/${req.id}`)}
       className="bg-white rounded-[24px] shadow-sm flex items-center gap-4 px-5 py-4 hover:shadow-md transition-all relative overflow-hidden cursor-pointer hover:scale-[1.005] active:scale-[0.995]"
     >
@@ -122,34 +122,36 @@ function HistoryRow({ req, onNavigate }) {
 
 // ─── History Page ─────────────────────────────────────────────────────────────
 export default function History({ onNavigate }) {
-  const [requests,  setRequests]  = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [filter,    setFilter]    = useState("all")
-  const [search,    setSearch]    = useState("")
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState("all")
+  const [search, setSearch] = useState("")
   const [activeToday, setActiveToday] = useState(0)
 
   useEffect(() => {
     Promise.all([
       api.get("/leave-requests/team?status=approved").catch(() => ({ data: { leaveRequests: [] } })),
       api.get("/leave-requests/team?status=rejected").catch(() => ({ data: { leaveRequests: [] } })),
+      api.get("/leave-requests/team?status=cancelled").catch(() => ({ data: { leaveRequests: [] } })),
       api.get("/leave-requests/team").catch(() => ({ data: { leaveRequests: [] } })),
       api.get("/users").catch(() => ({ data: { users: [] } })),
-    ]).then(([appRes, rejRes, allRes, usersRes]) => {
-      // History list = approved + rejected, sorted newest first
+    ]).then(([appRes, rejRes, canRes, allRes, usersRes]) => {
+      // History list = approved + rejected + cancelled, sorted newest first
       const hist = [
         ...(appRes.data.leaveRequests || []),
         ...(rejRes.data.leaveRequests || []),
+        ...(canRes.data.leaveRequests || []),
       ].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
       setRequests(hist)
 
       // Active today = total team members minus those on leave today
       const allReqs = allRes.data.leaveRequests || []
-      const today   = new Date(); today.setHours(0,0,0,0)
-      const outIds  = new Set()
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const outIds = new Set()
       allReqs.forEach(r => {
         if (r.status === "rejected" || r.status === "cancelled") return
-        const s = new Date(r.start_date); s.setHours(0,0,0,0)
-        const e = new Date(r.end_date);   e.setHours(23,59,59,999)
+        const s = new Date(r.start_date); s.setHours(0, 0, 0, 0)
+        const e = new Date(r.end_date); e.setHours(23, 59, 59, 999)
         if (today >= s && today <= e) outIds.add(r.user_id)
       })
       // Use real user count from /users (Employee role only), fall back to unique request IDs
@@ -160,9 +162,10 @@ export default function History({ onNavigate }) {
   }, [])
 
   const FILTERS = [
-    { key: "all",      label: "All" },
+    { key: "all", label: "All" },
     { key: "approved", label: "Approved" },
     { key: "rejected", label: "Rejected" },
+    { key: "cancelled", label: "Cancelled" },
   ]
 
   const filtered = useMemo(() => {
@@ -224,16 +227,16 @@ export default function History({ onNavigate }) {
                     onClick={() => setFilter(f.key)}
                     style={{
                       backgroundColor: isActive ? '#466063' : '#cdecea',
-                      color:           isActive ? '#ffffff' : '#1a5c54',
-                      height:       '36px',
-                      padding:      '0 24px',
+                      color: isActive ? '#ffffff' : '#1a5c54',
+                      height: '36px',
+                      padding: '0 24px',
                       borderRadius: '9999px',
-                      fontSize:     '13px',
-                      fontWeight:   '700',
-                      cursor:       'pointer',
-                      whiteSpace:   'nowrap',
-                      border:       'none',
-                      transition:   'opacity 0.15s',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      border: 'none',
+                      transition: 'opacity 0.15s',
                     }}
                   >
                     {f.label}
