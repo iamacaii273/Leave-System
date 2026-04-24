@@ -28,7 +28,7 @@ router.get('/me', verifyToken, async (req, res) => {
 
     // 2. Fetch all active leave types
     const [activeTypes] = await pool.query(
-      'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1'
+      'SELECT id, default_days_per_year, min_service_months, carryover FROM leave_types WHERE is_active = 1'
     );
 
     // 3. Fetch existing balances for this year
@@ -45,15 +45,32 @@ router.get('/me', verifyToken, async (req, res) => {
 
     // 5. Insert missing balances
     if (missingTypes.length > 0) {
-      const inserts = missingTypes.map(t => [
-        uuidv4(),
-        req.user.id,
-        t.id,
-        currentYear,
-        t.default_days_per_year,
-        0, // used_days
-        t.default_days_per_year, // remaining_days
-      ]);
+      // Fetch previous year balances for this user to check for carryover
+      const [prevBalances] = await pool.query(
+        'SELECT leave_type_id, remaining_days FROM leave_balances WHERE user_id = ? AND year = ?',
+        [req.user.id, currentYear - 1]
+      );
+      const prevBalancesMap = new Map();
+      prevBalances.forEach(b => {
+        prevBalancesMap.set(b.leave_type_id, parseFloat(b.remaining_days));
+      });
+
+      const inserts = missingTypes.map(t => {
+        let carriedOver = 0;
+        if (t.carryover === 1 && prevBalancesMap.has(t.id)) {
+          carriedOver = prevBalancesMap.get(t.id);
+        }
+        const totalDays = t.default_days_per_year + carriedOver;
+        return [
+          uuidv4(),
+          req.user.id,
+          t.id,
+          currentYear,
+          totalDays,
+          0, // used_days
+          totalDays, // remaining_days
+        ];
+      });
 
       await pool.query(
         `INSERT INTO leave_balances
@@ -140,7 +157,7 @@ router.get(
         serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       }
 
-      const [activeTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1');
+      const [activeTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months, carryover FROM leave_types WHERE is_active = 1');
       const [existingBalances] = await pool.query('SELECT leave_type_id FROM leave_balances WHERE user_id = ? AND year = ?', [userId, year]);
       const existingTypeIds = new Set(existingBalances.map(b => b.leave_type_id));
 
@@ -149,9 +166,32 @@ router.get(
       );
 
       if (missingTypes.length > 0) {
-        const inserts = missingTypes.map(t => [
-          uuidv4(), userId, t.id, year, t.default_days_per_year, 0, t.default_days_per_year,
-        ]);
+        // Fetch previous year balances for this user to check for carryover
+        const [prevBalances] = await pool.query(
+          'SELECT leave_type_id, remaining_days FROM leave_balances WHERE user_id = ? AND year = ?',
+          [userId, year - 1]
+        );
+        const prevBalancesMap = new Map();
+        prevBalances.forEach(b => {
+          prevBalancesMap.set(b.leave_type_id, parseFloat(b.remaining_days));
+        });
+
+        const inserts = missingTypes.map(t => {
+          let carriedOver = 0;
+          if (t.carryover === 1 && prevBalancesMap.has(t.id)) {
+            carriedOver = prevBalancesMap.get(t.id);
+          }
+          const totalDays = t.default_days_per_year + carriedOver;
+          return [
+            uuidv4(),
+            userId,
+            t.id,
+            year,
+            totalDays,
+            0, // used_days
+            totalDays, // remaining_days
+          ];
+        });
         await pool.query(
           `INSERT INTO leave_balances (id, user_id, leave_type_id, year, total_days, used_days, remaining_days) VALUES ?`,
           [inserts]
