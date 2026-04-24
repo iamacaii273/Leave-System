@@ -145,10 +145,11 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       });
     }
 
+    // Only count 'pending' requests — 'acknowledged' ones are already deducted from remaining_days
     const [pendingRows] = await pool.query(
       `SELECT COALESCE(SUM(total_days), 0) AS pending_days 
        FROM leave_requests 
-       WHERE user_id = ? AND leave_type_id = ? AND status IN ('pending', 'acknowledged') AND YEAR(start_date) = ?`,
+       WHERE user_id = ? AND leave_type_id = ? AND status = 'pending' AND YEAR(start_date) = ?`,
       [req.user.id, leave_type_id, currentYear]
     );
     const pendingDays = parseFloat(pendingRows[0].pending_days);
@@ -198,7 +199,15 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
       ],
     );
 
-    // Do not deduct balance upon submission. Handled in approval phase.
+    // Deduct balance immediately for auto-acknowledged requests (e.g. sick leave)
+    if (computedStatus === 'acknowledged') {
+      await pool.query(
+        `UPDATE leave_balances
+         SET used_days = used_days + ?, remaining_days = remaining_days - ?
+         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+        [parsedDays, parsedDays, req.user.id, leave_type_id, currentYear]
+      );
+    }
 
     // ── Save uploaded files ──────────────────────────────────────────────────
     if (req.files && req.files.length > 0) {
@@ -613,6 +622,14 @@ router.put(
         [req.user.id, id],
       );
 
+      // Deduct balance on acknowledge so remaining_days stays real-time
+      await pool.query(
+        `UPDATE leave_balances
+         SET used_days = used_days + ?, remaining_days = remaining_days - ?
+         WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
+      );
+
       await logAction(
         req.user.id,
         "request_approved",
@@ -687,16 +704,19 @@ router.put(
       await pool.query(
         `UPDATE leave_requests
          SET status = 'approved', approved_by = ?, manager_note = ?
-        WHERE id = ? `,
+         WHERE id = ?`,
         [req.user.id, manager_note || null, id],
       );
 
-      await pool.query(
-        `UPDATE leave_balances
-         SET used_days = used_days + ?, remaining_days = remaining_days - ?
-        WHERE user_id = ? AND leave_type_id = ? AND year = ? `,
-        [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
-      );
+      // Only deduct balance if not already deducted during acknowledge
+      if (request.status === 'pending') {
+        await pool.query(
+          `UPDATE leave_balances
+           SET used_days = used_days + ?, remaining_days = remaining_days - ?
+          WHERE user_id = ? AND leave_type_id = ? AND year = ? `,
+          [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
+        );
+      }
 
       await logAction(
         req.user.id,
@@ -771,6 +791,16 @@ router.put(
         [req.user.id, reject_reason ?? null, id],
       );
 
+      // Refund balance if it was already deducted during acknowledge
+      if (request.status === 'acknowledged') {
+        await pool.query(
+          `UPDATE leave_balances
+           SET used_days = used_days - ?, remaining_days = remaining_days + ?
+          WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+          [request.total_days, request.total_days, request.user_id, request.leave_type_id, requestYear]
+        );
+      }
+
       await logAction(
         req.user.id,
         "request_rejected",
@@ -807,7 +837,7 @@ router.put(
 
     try {
       const [rows] = await pool.query(
-        `SELECT lr.id, lr.user_id, u.full_name, u.department_id, lr.status 
+        `SELECT lr.id, lr.user_id, lr.leave_type_id, lr.total_days, lr.start_date, lr.status, u.full_name, u.department_id
          FROM leave_requests lr
          JOIN users u ON lr.user_id = u.id
          WHERE lr.id = ?`,
@@ -824,9 +854,9 @@ router.put(
         return res.status(403).json({ message: "You don't have permission to cancel this request." });
       }
 
-      if (request.status !== "pending") {
+      if (request.status !== "pending" && request.status !== "acknowledged") {
         return res.status(400).json({
-          message: `Only pending requests can be cancelled. Current status: '${request.status}'.`,
+          message: `Only pending or acknowledged requests can be cancelled. Current status: '${request.status}'.`,
         });
       }
 
@@ -836,6 +866,17 @@ router.put(
         WHERE id = ? `,
         [cancel_reason || "Cancelled by user", id],
       );
+
+      // Refund balance if it was already deducted during acknowledge
+      if (request.status === 'acknowledged') {
+        const reqYear = new Date(request.start_date).getFullYear();
+        await pool.query(
+          `UPDATE leave_balances
+           SET used_days = used_days - ?, remaining_days = remaining_days + ?
+           WHERE user_id = ? AND leave_type_id = ? AND year = ?`,
+          [request.total_days, request.total_days, req.user.id, request.leave_type_id, reqYear]
+        );
+      }
 
       await logAction(
         req.user.id,
