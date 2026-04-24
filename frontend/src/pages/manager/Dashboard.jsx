@@ -429,8 +429,8 @@ export default function Dashboard({ onNavigate }) {
                     : `${formatDateShort(req.start_date)} – ${formatDateShort(req.end_date)}`
 
                   return (
-                    <div 
-                      key={req.id} 
+                    <div
+                      key={req.id}
                       onClick={() => onNavigate && onNavigate(`requests/${req.id}`)}
                       className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-all cursor-pointer hover:scale-[1.005] active:scale-[0.995]"
                     >

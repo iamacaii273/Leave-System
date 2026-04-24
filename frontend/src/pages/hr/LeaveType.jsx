@@ -185,7 +185,9 @@ export default function LeaveType({ onNavigate }) {
       reqManager: leave.reqManager !== false,
       carryover: !!leave.carryover,
       reqAttachment: leave.reqAttachment,
-      department_ids: leave.department_ids || []
+      department_ids: (leave.department_ids && leave.department_ids.length > 0)
+        ? leave.department_ids
+        : (isHR ? departments.map(d => d.id) : [])
     })
     setEditingId(leave.id)
     setIsCreating(true)
@@ -386,45 +388,48 @@ export default function LeaveType({ onNavigate }) {
                 </div>
 
                 <div>
-                  <label className="block text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-2">Scope (Departments)</label>
-                  <div className="bg-[#dee4ec] rounded-[24px] p-4 max-h-[150px] overflow-y-auto">
+                  <label className="block text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-3">Scope (Departments)</label>
+                  <div className="flex flex-wrap gap-2.5">
                     {isSuperAdmin && (
-                      <div
-                        className="flex items-center gap-3 mb-3 cursor-pointer"
+                      <button
+                        type="button"
+                        className={`!px-5 !py-2.5 rounded-full text-[13px] font-bold transition-all flex items-center gap-2 border-2 ${form.department_ids.length === 0
+                          ? '!bg-[#1f3747] !border-[#1f3747] !text-white shadow-md'
+                          : '!bg-white !border-[#e2e8f0] !text-[#64748b] hover:!border-[#1f3747] hover:!text-[#1f3747]'}`}
                         onClick={() => setForm({ ...form, department_ids: [] })}
                       >
-                        <div className={`w-5 h-5 rounded border-2 border-[#4c6367] flex items-center justify-center ${form.department_ids.length === 0 ? 'bg-[#4c6367]' : 'bg-transparent'}`}>
-                          {form.department_ids.length === 0 && <Plus size={14} className="text-white rotate-45" />}
-                        </div>
-                        <span className="text-[14px] font-bold text-[#1f3747]">Global - All Employees</span>
-                      </div>
+                        <Globe size={14} /> Global Policy
+                      </button>
                     )}
-                    <div className="grid grid-cols-1 gap-2">
-                      {departments.map(d => {
-                        const isChecked = form.department_ids.includes(d.id)
-                        return (
-                          <div
-                            key={d.id}
-                            className="flex items-center gap-3 cursor-pointer group"
-                            onClick={() => {
-                              if (isChecked) {
-                                setForm({ ...form, department_ids: form.department_ids.filter(id => id !== d.id) })
-                              } else {
-                                setForm({ ...form, department_ids: [...form.department_ids, d.id] })
-                              }
-                            }}
-                          >
-                            <div className={`w-5 h-5 rounded border-2 border-[#4c6367] flex items-center justify-center transition-colors ${isChecked ? 'bg-[#4c6367]' : 'bg-transparent group-hover:border-[#006dae]'}`}>
-                              {isChecked && <Plus size={14} className="text-white translate-y-[0px] rotate-45" style={{ transform: 'rotate(0deg)' }} />}
-                            </div>
-                            <span className={`text-[14px] font-semibold ${isChecked ? 'text-[#1f3747]' : 'text-[#64748b]'}`}>{d.name}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
+
+                    {departments.map(d => {
+                      const isChecked = form.department_ids.includes(d.id)
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className={`!px-5 !py-2.5 rounded-full text-[13px] font-bold transition-all flex items-center gap-2 border-2 ${isChecked
+                            ? '!bg-[#4c6367] !border-[#4c6367] !text-white shadow-md'
+                            : '!bg-white !border-[#e2e8f0] !text-[#909bab] hover:!border-[#4c6367] hover:!text-[#4c6367]'}`}
+                          onClick={() => {
+                            if (isChecked) {
+                              setForm({ ...form, department_ids: form.department_ids.filter(id => id !== d.id) })
+                            } else {
+                              setForm({ ...form, department_ids: [...form.department_ids, d.id] })
+                            }
+                          }}
+                        >
+                          <Building2 size={14} />
+                          {d.name}
+                        </button>
+                      )
+                    })}
                   </div>
                   {isHR && departments.length === 0 && (
-                    <p className="text-[12px] text-red-500 mt-2">No departments assigned to your account.</p>
+                    <p className="text-[12px] text-red-500 mt-2 italic flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                      No departments assigned to your account.
+                    </p>
                   )}
                 </div>
 

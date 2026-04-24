@@ -129,11 +129,10 @@ export default function SuperAdminDashboard({ onNavigate }) {
           </p>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {stats.map((stat, idx) => (
-            <div key={idx} className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
+            <div key={idx} className="bg-white rounded-[24px] p-6 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-4 transition-all duration-300 hover:scale-[1.05] hover:shadow-[0_20px_40px_rgba(31,55,71,0.1)] cursor-default group">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" style={{ backgroundColor: stat.iconBg }}>
                 <stat.icon size={20} style={{ color: stat.iconColor }} />
               </div>
               <div>
@@ -222,7 +221,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
                     setSearchTerm("");
                     setCurrentPage(1);
                   }}
-                  className="px-4 py-2.5 text-[12px] font-bold text-[#f56464] hover:bg-[#fde2e4] rounded-xl transition-colors"
+                  className="!px-4 !py-2.5 text-[12px] font-bold text-[#f56464] hover:bg-[#fde2e4] rounded-xl transition-colors"
                 >
                   Clear All
                 </button>

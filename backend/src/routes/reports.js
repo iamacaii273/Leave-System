@@ -54,10 +54,9 @@ router.get("/dashboard", ...guard, async (req, res) => {
            WHERE r.name = 'Employee'
              AND u.deleted_at IS NULL
              AND u.is_active = 1
-             AND DATE(lr.submitted_at) = CURDATE()
              AND lr.status IN ('pending', 'acknowledged')
              ${deptFilter.sql}
-         ) AS pending_today`, paramsStats
+         ) AS total_pending`, paramsStats
     );
 
     const [employees] = await pool.query(

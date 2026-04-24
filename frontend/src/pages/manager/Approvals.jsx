@@ -443,9 +443,8 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
                   <button
                     onClick={() => setShowNoteModal(true)}
                     disabled={!!actionLoading}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-[800] transition-colors cursor-pointer disabled:opacity-50 ${
-                      isAcknowledged ? 'bg-[#bfdbfe] text-[#1e3a8a] hover:opacity-80' : 'bg-[#bbf7d0] text-[#166534] hover:bg-[#86efac]'
-                    }`}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-[800] transition-colors cursor-pointer disabled:opacity-50 ${isAcknowledged ? 'bg-[#bfdbfe] text-[#1e3a8a] hover:opacity-80' : 'bg-[#bbf7d0] text-[#166534] hover:bg-[#86efac]'
+                      }`}
                   >
                     <CheckCircle size={15} strokeWidth={2.5} />
                     {actionLoading === "approve" ? "Approving…" : isAcknowledged ? "Approve (Acknowledge)" : "Approve"}

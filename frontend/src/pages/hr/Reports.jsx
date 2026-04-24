@@ -15,6 +15,16 @@ function formatDateShort(dateString) {
   return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+}
+
+function isFullDay(start, end) {
+  const s = new Date(start)
+  const e = new Date(end)
+  return s.getHours() === 9 && s.getMinutes() === 0 && e.getHours() === 17 && e.getMinutes() === 0
+}
+
 function isSameDayStr(startDate, endDate) {
   const start = new Date(startDate)
   const end = new Date(endDate)
@@ -642,11 +652,13 @@ export default function Reports({ onNavigate }) {
                     const Icon = iconInfo.Icon;
                     const statusTheme = getRequestTheme(hist.status);
 
+                    const showTime = !isFullDay(hist.start, hist.end);
                     let dateRangeStr = "";
                     if (isSameDayStr(hist.start, hist.end)) {
                       dateRangeStr = formatDateShort(hist.start);
+                      if (showTime) dateRangeStr += ` (${formatTime(hist.start)} - ${formatTime(hist.end)})`;
                     } else {
-                      dateRangeStr = `${formatDateShort(hist.start)} - ${formatDateShort(hist.end)}`;
+                      dateRangeStr = `${formatDateShort(hist.start)}${showTime ? ' ' + formatTime(hist.start) : ''} - ${formatDateShort(hist.end)}${showTime ? ' ' + formatTime(hist.end) : ''}`;
                     }
 
                     return (

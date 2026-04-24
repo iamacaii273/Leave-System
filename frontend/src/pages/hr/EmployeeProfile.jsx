@@ -61,6 +61,18 @@ function formatDateShort(dateString) {
   return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+function formatTime(dateString) {
+  if (!dateString) return ""
+  return new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+}
+
+function isFullDay(startStr, endStr) {
+  if (!startStr || !endStr) return true
+  const s = new Date(startStr)
+  const e = new Date(endStr)
+  return s.getHours() === 9 && s.getMinutes() === 0 && e.getHours() === 17 && e.getMinutes() === 0
+}
+
 function isSameDayStr(startDate, endDate) {
   const start = new Date(startDate)
   const end = new Date(endDate)
@@ -525,9 +537,10 @@ export default function EmployeeProfile({ onNavigate }) {
                     ) : displayedActivities.map((request) => {
                       const { Icon, color, bg } = resolveLeaveTypeStyle(request.leave_type_icon, request.leave_type_color)
                       const statusTheme = getRequestTheme(request.status)
+                      const showTime = !isFullDay(request.start_date, request.end_date)
                       const dateRange = isSameDayStr(request.start_date, request.end_date)
-                        ? formatDateShort(request.start_date)
-                        : `${formatDateShort(request.start_date)} - ${formatDateShort(request.end_date)}`
+                        ? `${formatDateShort(request.start_date)}${showTime ? ` (${formatTime(request.start_date)} - ${formatTime(request.end_date)})` : ""}`
+                        : `${formatDateShort(request.start_date)}${showTime ? ` ${formatTime(request.start_date)}` : ""} - ${formatDateShort(request.end_date)}${showTime ? ` ${formatTime(request.end_date)}` : ""}`
 
                       return (
                         <div key={request.id} className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-colors">

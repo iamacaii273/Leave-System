@@ -239,9 +239,6 @@ router.put(
           "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
           [id]
         );
-        if (ltdRows.length === 0) {
-          return res.status(403).json({ message: "HR cannot modify global leave types." });
-        }
 
         const [managedDepts] = await pool.query(
           "SELECT department_id FROM hr_departments WHERE user_id = ?",

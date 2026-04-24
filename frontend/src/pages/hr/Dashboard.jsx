@@ -48,7 +48,7 @@ export default function Dashboard({ onNavigate }) {
   const [stats, setStats] = useState({
     total_employees: 0,
     requests_today: 0,
-    pending_today: 0,
+    total_pending: 0,
   })
   const [employees, setEmployees] = useState([])
   const [trendData, setTrendData] = useState([])
@@ -69,7 +69,7 @@ export default function Dashboard({ onNavigate }) {
         setStats({
           total_employees: Number(dashRes.data?.stats?.total_employees || 0),
           requests_today: Number(dashRes.data?.stats?.requests_today || 0),
-          pending_today: Number(dashRes.data?.stats?.pending_today || 0),
+          total_pending: Number(dashRes.data?.stats?.total_pending || 0),
         })
         setEmployees(dashRes.data?.employees || [])
 
@@ -122,28 +122,28 @@ export default function Dashboard({ onNavigate }) {
         </div>
 
         <div className="flex gap-6 mb-10">
-          <div className="flex-1 bg-white rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative overflow-hidden h-[180px]">
+          <div className="flex-1 bg-white rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative overflow-hidden h-[180px] transition-all duration-300 hover:scale-[1.05] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] cursor-default group">
             <h3 className="font-bold text-[14px] font-fredoka text-[#667085] tracking-widest uppercase mb-4">Total Employees</h3>
             <p className="text-[52px] font-fredoka font-bold text-[#4c6367]">
               {loading ? "--" : stats.total_employees}
             </p>
-            <Users className="absolute bottom-6 right-6 w-24 h-24 text-[#E6E6E6] opacity-50" />
+            <Users className="absolute bottom-6 right-6 w-24 h-24 text-[#E6E6E6] opacity-50 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 group-hover:text-[#3ea8e5] group-hover:opacity-40" />
           </div>
 
-          <div className="flex-1 bg-[#fcac84] rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] relative overflow-hidden h-[180px]">
+          <div className="flex-1 bg-[#fcac84] rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] relative overflow-hidden h-[180px] transition-all duration-300 hover:scale-[1.05] hover:shadow-[0_20px_40px_rgba(252,172,132,0.2)] cursor-default group">
             <h3 className="font-bold text-[14px] font-fredoka text-[#aa6b4c] tracking-widest uppercase mb-4">Requests Today</h3>
             <p className="text-[52px] font-fredoka font-bold text-[#7d462a]">
               {loading ? "--" : stats.requests_today}
             </p>
-            <CalendarDays className="absolute bottom-6 right-6 w-24 h-24 text-[#e2936a] opacity-50" />
+            <CalendarDays className="absolute bottom-6 right-6 w-24 h-24 text-[#e2936a] opacity-50 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 group-hover:text-[#ffffff] group-hover:opacity-30" />
           </div>
 
-          <div className="flex-1 bg-[#fade56] rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] relative overflow-hidden h-[180px]">
-            <h3 className="font-bold text-[14px] font-fredoka text-[#a89025] tracking-widest uppercase mb-4">Pending Today</h3>
+          <div className="flex-1 bg-[#fade56] rounded-[40px] p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] relative overflow-hidden h-[180px] transition-all duration-300 hover:scale-[1.05] hover:shadow-[0_20px_40px_rgba(250,222,86,0.2)] cursor-default group">
+            <h3 className="font-bold text-[14px] font-fredoka text-[#a89025] tracking-widest uppercase mb-4">Total Pending</h3>
             <p className="text-[52px] font-fredoka font-bold text-[#705e07]">
-              {loading ? "--" : stats.pending_today}
+              {loading ? "--" : stats.total_pending}
             </p>
-            <CheckSquare className="absolute bottom-6 right-6 w-24 h-24 text-[#e0c641] opacity-50" />
+            <CheckSquare className="absolute bottom-6 right-6 w-24 h-24 text-[#e0c641] opacity-50 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 group-hover:text-[#ffffff] group-hover:opacity-30" />
           </div>
         </div>
 
@@ -151,13 +151,14 @@ export default function Dashboard({ onNavigate }) {
           <div className="bg-white rounded-[40px] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-bold text-[22px] font-fredoka text-[#1f3747] tracking-wide">Employee Directory</h3>
-              <button
-                onClick={() => setShowAllEmployees(!showAllEmployees)}
-                className="text-[14px] font-bold text-[#3ea8e5] hover:text-[#2d8abf] transition-colors"
-                disabled={employees.length <= 3}
-              >
-                {showAllEmployees ? "Show Less" : "View All"}
-              </button>
+              {employees.length > 3 && (
+                <button
+                  onClick={() => setShowAllEmployees(!showAllEmployees)}
+                  className="text-[14px] font-bold text-[#3ea8e5] hover:text-[#2d8abf] transition-colors"
+                >
+                  {showAllEmployees ? "Show Less" : "View All"}
+                </button>
+              )}
             </div>
 
             {error ? (
