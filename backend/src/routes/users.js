@@ -368,7 +368,10 @@ router.post(
       }
       if (serviceMonths < 0) serviceMonths = 0;
 
-      const [leaveTypes] = await pool.query('SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1');
+      const [leaveTypes] = await pool.query(
+        'SELECT id, default_days_per_year, min_service_months FROM leave_types WHERE is_active = 1 AND (department_id IS NULL OR department_id = ?)',
+        [department_id]
+      );
       for (const lt of leaveTypes) {
         if (serviceMonths >= lt.min_service_months) {
           const lbId = uuidv4();

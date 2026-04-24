@@ -23,7 +23,7 @@ router.get("/dashboard", ...guard, async (req, res) => {
     if (deptFilter.param) {
       paramsStats.push(deptFilter.param, deptFilter.param, deptFilter.param);
     }
-    
+
     const [[stats]] = await pool.query(
       `SELECT
          (
@@ -110,7 +110,7 @@ router.get("/overview", ...guard, async (req, res) => {
   try {
     const deptFilterLr = getDeptFilter(req, "lr_u", true);
     const deptFilterU = getDeptFilter(req, "u", true);
-    
+
     // We need to join users to leave_requests in overview to filter by department
     const lrJoins = `JOIN users lr_u ON leave_requests.user_id = lr_u.id`;
 
@@ -169,11 +169,14 @@ router.get("/leave-summary", ...guard, async (req, res) => {
 
   try {
     const deptFilterU = getDeptFilter(req, "u", true);
-    
+
     const params = [year];
     if (deptFilterU.param) params.push(deptFilterU.param);
     params.push(year);
     if (deptFilterU.param) params.push(deptFilterU.param);
+
+    // Add param for the new lt.department_id scope filter
+    if (req.user.role === "HR") params.push(req.user.id);
 
     const [summary] = await pool.query(
       `SELECT
@@ -201,6 +204,7 @@ router.get("/leave-summary", ...guard, async (req, res) => {
            ${deptFilterU.sql}
        ) lr ON lr.leave_type_id = lt.id
        WHERE lt.is_active = 1
+         AND (lt.department_id IS NULL OR lt.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))
        GROUP BY lt.id, lt.name
        ORDER BY lt.name ASC`,
       params
@@ -272,10 +276,14 @@ router.get("/employee-balances", ...guard, async (req, res) => {
       deptFilterU.param ? [deptFilterU.param] : []
     );
 
-    // 2. Fetch all active leave types
-    const [leaveTypes] = await pool.query(
-      `SELECT id, name, min_service_months FROM leave_types WHERE is_active = 1`
-    );
+    // 2. Fetch all relevant active leave types
+    let ltQuery = "SELECT id, name, min_service_months, department_id FROM leave_types WHERE is_active = 1";
+    let ltParams = [];
+    if (req.user.role === "HR") {
+      ltQuery += " AND (department_id IS NULL OR department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))";
+      ltParams.push(req.user.id);
+    }
+    const [leaveTypes] = await pool.query(ltQuery, ltParams);
 
     // 3. Fetch all existing balances for the given year
     const [balances] = await pool.query(
@@ -298,7 +306,10 @@ router.get("/employee-balances", ...guard, async (req, res) => {
         serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       }
 
-      const empBalances = leaveTypes.map(lt => {
+      // For the report, only show types that are global OR match this specific employee's department
+      const relevantTypes = leaveTypes.filter(lt => !lt.department_id || lt.department_id === u.department_id);
+
+      const empBalances = relevantTypes.map(lt => {
         const bal = balanceMap[`${u.id}_${lt.id}`];
         const isEligible = serviceMonths >= (lt.min_service_months || 0);
         return {
