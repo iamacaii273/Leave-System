@@ -525,9 +525,26 @@ export default function EmployeeProfile({ onNavigate }) {
                     ) : displayedActivities.map((request) => {
                       const { Icon, color, bg } = resolveLeaveTypeStyle(request.leave_type_icon, request.leave_type_color)
                       const statusTheme = getRequestTheme(request.status)
-                      const dateRange = isSameDayStr(request.start_date, request.end_date)
-                        ? formatDateShort(request.start_date)
-                        : `${formatDateShort(request.start_date)} - ${formatDateShort(request.end_date)}`
+                      
+                      let dateRange = formatDateShort(request.start_date);
+                      const sTime = new Date(request.start_date);
+                      const eTime = new Date(request.end_date);
+                      const isFractional = (request.total_days % 1) !== 0;
+                      const isNonStandard = sTime.getHours() !== 9 || sTime.getMinutes() !== 0 || eTime.getHours() !== 17 || eTime.getMinutes() !== 0;
+
+                      if (isFractional || isNonStandard) {
+                        const sTimeStr = sTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        const eTimeStr = eTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        if (isSameDayStr(request.start_date, request.end_date)) {
+                          dateRange = `${formatDateShort(request.start_date)} (${sTimeStr} - ${eTimeStr})`;
+                        } else {
+                          dateRange = `${formatDateShort(request.start_date)} ${sTimeStr} - ${formatDateShort(request.end_date)} ${eTimeStr}`;
+                        }
+                      } else {
+                        if (!isSameDayStr(request.start_date, request.end_date)) {
+                          dateRange += ` - ${formatDateShort(request.end_date)}`;
+                        }
+                      }
 
                       return (
                         <div key={request.id} className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-colors">

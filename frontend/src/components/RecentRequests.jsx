@@ -56,8 +56,23 @@ export default function RecentRequests({ requests = [], onNavigate }) {
             const styleLabel = statusStyles[req.status.toLowerCase()] || statusStyles.pending;
 
             let dateRange = formatDateShort(req.start_date);
-            if (!isSameDayStr(req.start_date, req.end_date)) {
-              dateRange += ` - ${formatDateShort(req.end_date)}`;
+            const sTime = new Date(req.start_date);
+            const eTime = new Date(req.end_date);
+            const isFractional = (req.total_days % 1) !== 0;
+            const isNonStandard = sTime.getHours() !== 9 || sTime.getMinutes() !== 0 || eTime.getHours() !== 17 || eTime.getMinutes() !== 0;
+
+            if (isFractional || isNonStandard) {
+              const sTimeStr = sTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              const eTimeStr = eTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              if (isSameDayStr(req.start_date, req.end_date)) {
+                dateRange = `${formatDateShort(req.start_date)} (${sTimeStr} - ${eTimeStr})`;
+              } else {
+                dateRange = `${formatDateShort(req.start_date)} ${sTimeStr} - ${formatDateShort(req.end_date)} ${eTimeStr}`;
+              }
+            } else {
+              if (!isSameDayStr(req.start_date, req.end_date)) {
+                dateRange += ` - ${formatDateShort(req.end_date)}`;
+              }
             }
 
             return (
