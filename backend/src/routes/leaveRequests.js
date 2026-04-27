@@ -37,6 +37,7 @@ router.get("/me", verifyToken, async (req, res) => {
          lr.total_days,
          lr.reason,
          lr.status,
+         lr.is_exceeded_quota,
          lr.approved_by,
          approver.full_name  AS approved_by_name,
          lr.reject_reason,
@@ -162,12 +163,9 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
     const pendingDays = parseFloat(pendingRows[0].pending_days);
     const effectiveRemaining = parseFloat(balanceRows[0].remaining_days) - pendingDays;
 
+    let isExceededQuota = false;
     if (effectiveRemaining < parsedDays) {
-      return res.status(400).json({
-        message:
-          `Insufficient leave balance (including pending requests). ` +
-          `Remaining: ${effectiveRemaining} day(s), Requested: ${parsedDays} day(s).`,
-      });
+      isExceededQuota = true;
     }
 
     // ── Overlap check: reject if any active request covers the same dates ──
@@ -192,8 +190,8 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
 
     await pool.query(
       `INSERT INTO leave_requests
-         (id, user_id, leave_type_id, start_date, end_date, total_days, reason, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, user_id, leave_type_id, start_date, end_date, total_days, reason, status, is_exceeded_quota)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         req.user.id,
@@ -202,7 +200,8 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
         end_date,
         parsedDays,
         reason ?? null,
-        computedStatus
+        computedStatus,
+        isExceededQuota
       ],
     );
 
@@ -343,6 +342,7 @@ router.get(
            lr.total_days,
            lr.reason,
            lr.status,
+           lr.is_exceeded_quota,
            lr.approved_by,
            approver.full_name  AS approved_by_name,
            lr.reject_reason,
@@ -398,6 +398,7 @@ router.get(
            lr.total_days,
            lr.reason,
            lr.status,
+           lr.is_exceeded_quota,
            lr.approved_by,
            approver.full_name AS approved_by_name,
            lr.reject_reason,
@@ -552,6 +553,7 @@ router.get(
            lr.total_days,
            lr.reason,
            lr.status,
+           lr.is_exceeded_quota,
            lr.approved_by,
            approver.full_name  AS approved_by_name,
            lr.reject_reason,

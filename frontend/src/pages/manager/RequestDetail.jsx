@@ -7,7 +7,7 @@ import {
   Umbrella, CheckCircle, XCircle,
   ArrowLeft, Calendar, FileText, File, Mail, Phone,
   Briefcase, CalendarDays, ChevronLeft, ChevronRight,
-  Thermometer, Users
+  Thermometer, Users, AlertTriangle
 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
@@ -466,6 +466,27 @@ export default function RequestDetail({ onNavigate }) {
         {/* ── Manager Comment + Actions ── */}
         {canAct && (
           <div style={{ background: "white", borderRadius: "24px", padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+            {!!request.is_exceeded_quota && (
+              <div style={{
+                marginBottom: "20px",
+                padding: "16px 20px",
+                borderRadius: "16px",
+                backgroundColor: "#fff1f2",
+                border: "2px solid #fecaca",
+                display: "flex",
+                gap: "14px",
+                alignItems: "center"
+              }}>
+                <div style={{ width: "40px", height: "40px", borderRadius: "12px", backgroundColor: "#ffe4e6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <AlertTriangle size={20} color="#e11d48" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p style={{ fontSize: "14px", fontWeight: 800, color: "#9f1239", marginBottom: "2px" }}>Exceeds Available Quota</p>
+                  <p style={{ fontSize: "12px", fontWeight: 600, color: "#e11d48", opacity: 0.8 }}>This employee has requested more days than they have available in their current balance. Please review carefully before approving.</p>
+                </div>
+              </div>
+            )}
+
             {request.status === "acknowledged" && (
               <>
                 <p style={{ fontSize: "15px", fontWeight: 800, color: "#2d3e50", marginBottom: "10px" }}>Manager's Note</p>

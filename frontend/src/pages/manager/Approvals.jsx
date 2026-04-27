@@ -4,7 +4,7 @@ import Header from "../../components/Header"
 import api from "../../services/api"
 import {
   ChevronLeft, ChevronRight,
-  CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp
+  CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle
 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
@@ -394,19 +394,27 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
           </div>
 
           {/* Duration */}
-          <div className="min-w-[160px]">
+          <div className="min-w-[160px] flex flex-col justify-center">
             <p className="text-[10px] font-[800] tracking-widest uppercase text-[#94a3b8]">DURATION</p>
-            <p className="font-bold text-[14px] text-[#2d3e50]">{dateRange}</p>
-            <p className="text-[11px] text-[#94a3b8]">{formatDurationText(req.total_days)}</p>
+            <p className="font-bold text-[14px] text-[#2d3e50] leading-tight">{dateRange}</p>
+            <p className="text-[11px] text-[#94a3b8] mb-1">{formatDurationText(req.total_days)}</p>
+            {!!req.is_exceeded_quota && (
+              <span className="px-2 py-0.5 rounded-lg bg-[#fff1f2] text-[#e11d48] text-[9px] font-[900] tracking-wider uppercase flex items-center gap-1 border border-[#fecaca] w-fit">
+                <AlertTriangle size={10} />
+                Exceeds Quota
+              </span>
+            )}
           </div>
 
           {/* Time badge */}
-          <span
-            className="hidden md:inline-block px-2.5 py-1 rounded-full text-[11px] font-[800] tracking-wide shrink-0"
-            style={{ backgroundColor: timeBadge.bg, color: timeBadge.color }}
-          >
-            {timeBadge.label}
-          </span>
+          <div className="hidden md:flex flex-col items-end shrink-0 min-w-[80px]">
+            <span
+              className="px-2.5 py-1 rounded-full text-[11px] font-[800] tracking-wide"
+              style={{ backgroundColor: timeBadge.bg, color: timeBadge.color }}
+            >
+              {timeBadge.label}
+            </span>
+          </div>
 
           <div className="ml-auto flex items-center gap-3">
             <span

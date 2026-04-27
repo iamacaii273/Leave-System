@@ -224,14 +224,17 @@ router.put(
     } = req.body;
 
     try {
-      const [existing] = await pool.query(
-        "SELECT id FROM leave_types WHERE id = ?",
+      const [existingRows] = await pool.query(
+        "SELECT id, default_days_per_year FROM leave_types WHERE id = ?",
         [id],
       );
 
-      if (existing.length === 0) {
+      if (existingRows.length === 0) {
         return res.status(404).json({ message: "Leave type not found." });
       }
+
+      const existingRecord = existingRows[0];
+      const oldDefault = existingRecord.default_days_per_year || 0;
 
       // Permission Check
       if (req.user.role === "HR") {
@@ -274,7 +277,12 @@ router.put(
         fields.push("name = ?"); values.push(name.trim());
       }
 
-      if (default_days_per_year !== undefined) { fields.push("default_days_per_year = ?"); values.push(default_days_per_year); }
+      let diffDays = 0;
+      if (default_days_per_year !== undefined) {
+        diffDays = Number(default_days_per_year) - oldDefault;
+        fields.push("default_days_per_year = ?");
+        values.push(default_days_per_year);
+      }
       if (description !== undefined) { fields.push("description = ?"); values.push(description); }
       if (color_type !== undefined) { fields.push("color_type = ?"); values.push(color_type); }
       if (icon_name !== undefined) { fields.push("icon_name = ?"); values.push(icon_name); }
@@ -321,6 +329,17 @@ router.put(
         await pool.query(
           `UPDATE leave_types SET ${fields.join(", ")} WHERE id = ?`,
           values,
+        );
+      }
+
+      // Update balances if default days changed
+      if (diffDays !== 0) {
+        const currentYear = new Date().getFullYear();
+        await pool.query(
+          `UPDATE leave_balances 
+           SET total_days = total_days + ?, remaining_days = remaining_days + ? 
+           WHERE leave_type_id = ? AND year = ?`,
+          [diffDays, diffDays, id, currentYear]
         );
       }
 
