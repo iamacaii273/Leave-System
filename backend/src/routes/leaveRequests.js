@@ -8,14 +8,26 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// ─── Multer setup ───────────────────────────────────────────────────────────
-const uploadDir = path.join(__dirname, "../../uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => cb(null, `${uuidv4()}${path.extname(file.originalname)}`),
+// Ensure env vars are loaded (needed when this module is required before dotenv runs)
+require("dotenv").config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "leave-system/uploads",
+    resource_type: "auto", // Allows PDFs, images, etc.
+  },
+});
+
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,7 +233,7 @@ router.post("/", verifyToken, upload.array("files", 10), async (req, res) => {
         uuidv4(),
         id,
         f.originalname,
-        f.filename,
+        f.path,
         f.mimetype,
         f.size,
       ]);

@@ -327,12 +327,12 @@ export default function RequestDetail({ onNavigate }) {
                   const sameDay = isSameDayStr(s, e);
                   const sDate = sameDay ? formatDateLong(s) : formatDate(s);
                   const eDate = formatDate(e);
-                  
+
                   const isFractional = (request.total_days % 1) !== 0;
                   const sTime = new Date(s);
                   const eTime = new Date(e);
                   const isNonStandard = sTime.getHours() !== 9 || sTime.getMinutes() !== 0 || eTime.getHours() !== 17 || eTime.getMinutes() !== 0;
-                  
+
                   if (isFractional || isNonStandard) {
                     const sTimeStr = sTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
                     const eTimeStr = eTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -460,7 +460,7 @@ export default function RequestDetail({ onNavigate }) {
               {files.map(f => (
                 <a
                   key={f.id}
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/uploads/${f.stored_name}`}
+                  href={f.stored_name.startsWith('http') ? f.stored_name : `${import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:5000"}/uploads/${f.stored_name}`}
                   target="_blank"
                   rel="noreferrer"
                   style={{ textDecoration: "none" }}
