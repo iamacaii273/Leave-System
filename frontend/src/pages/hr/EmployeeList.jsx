@@ -30,9 +30,12 @@ function getAvatarColor(id = "") {
 }
 
 function formatQuota(used, total) {
-  const safeUsed = Number(used || 0)
-  const safeTotal = Number(total || 0)
-  return `${String(Math.round(safeUsed)).padStart(2, "0")} / ${Math.round(safeTotal)} Days`
+  const f = (val) => {
+    const num = Number(val || 0)
+    const s = num.toFixed(1)
+    return s.endsWith(".0") ? String(Math.trunc(num)) : s
+  }
+  return `${f(used)} / ${f(total)} Days`
 }
 
 export default function EmployeeList({ onNavigate }) {
@@ -227,11 +230,10 @@ export default function EmployeeList({ onNavigate }) {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                        page === currentPage
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${page === currentPage
                           ? "text-[#2c4c48] font-bold"
                           : "hover:bg-gray-50"
-                      }`}
+                        }`}
                       style={page === currentPage ? { backgroundColor: "#c2e4e1" } : {}}
                     >
                       {page}
