@@ -175,7 +175,11 @@ export default function Dashboard({ onNavigate }) {
                   const theme = getStatusTheme(emp.status)
 
                   return (
-                    <div key={emp.id} className="flex items-center justify-between p-4 bg-[#f4f7f9] rounded-[24px]">
+                    <div 
+                      key={emp.id} 
+                      onClick={() => onNavigate(`employee/${emp.id}`)}
+                      className="flex items-center justify-between p-4 bg-[#f4f7f9] rounded-[24px] cursor-pointer hover:bg-[#eaf1f5] transition-colors"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-[#d9ecf7] text-[#1f6d99] flex items-center justify-center font-fredoka font-bold text-[15px] shadow-sm">
                           {getInitials(emp.full_name)}
