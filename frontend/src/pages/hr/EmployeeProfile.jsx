@@ -525,12 +525,18 @@ export default function EmployeeProfile({ onNavigate }) {
                     ) : displayedActivities.map((request) => {
                       const { Icon, color, bg } = resolveLeaveTypeStyle(request.leave_type_icon, request.leave_type_color)
                       const statusTheme = getRequestTheme(request.status)
-                      const dateRange = isSameDayStr(request.start_date, request.end_date)
-                        ? formatDateShort(request.start_date)
-                        : `${formatDateShort(request.start_date)} - ${formatDateShort(request.end_date)}`
+                      
+                      let dateRange = formatDateShort(request.start_date);
+                      if (!isSameDayStr(request.start_date, request.end_date)) {
+                        dateRange += ` - ${formatDateShort(request.end_date)}`;
+                      }
 
                       return (
-                        <div key={request.id} className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-colors">
+                        <div 
+                          key={request.id} 
+                          onClick={() => onNavigate && onNavigate(`requests/${request.id}`)}
+                          className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-all cursor-pointer hover:scale-[1.005] active:scale-[0.995]"
+                        >
                           <div className="flex items-center gap-2 min-w-[130px]">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
                               <Icon size={15} color={color} strokeWidth={2.5} />

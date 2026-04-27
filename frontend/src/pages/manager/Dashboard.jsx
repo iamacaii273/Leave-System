@@ -274,6 +274,13 @@ function TeamCapacity({ totalMembers, outToday }) {
   if (capacity < 70) label = "Heads up! 😬"
   else if (capacity < 90) label = "Looking good! 🙂"
 
+  const getColor = (cap) => {
+    if (cap >= 60) return "#16a34a" // Brighter Green
+    if (cap >= 40) return "#f57a00" // Orange
+    return "#f56464" // Red
+  }
+  const color = getColor(capacity)
+
   return (
     <div className="bg-white rounded-[32px] p-6 shadow-sm flex flex-col items-center">
       <h3 className="font-bold text-[16px] text-[#2d3e50] mb-4 self-start">Team Capacity</h3>
@@ -282,7 +289,7 @@ function TeamCapacity({ totalMembers, outToday }) {
           <circle cx="60" cy="60" r={radius} fill="none" stroke="#eef2f9" strokeWidth="12" />
           <circle
             cx="60" cy="60" r={radius} fill="none"
-            stroke={capacity >= 80 ? "#185b48" : capacity >= 60 ? "#f57a00" : "#f56464"}
+            stroke={color}
             strokeWidth="12"
             strokeDasharray={circ}
             strokeDashoffset={offset}
@@ -291,7 +298,7 @@ function TeamCapacity({ totalMembers, outToday }) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[22px] font-bold text-[#2d3e50] font-fredoka">{capacity}%</span>
+          <span className="text-[22px] font-bold font-fredoka" style={{ color: color }}>{capacity}%</span>
         </div>
       </div>
       <p className="text-[14px] font-bold text-[#3f4a51] mt-1">{label}</p>
@@ -424,9 +431,11 @@ export default function Dashboard({ onNavigate }) {
                 {recent.map(req => {
                   const { Icon, color, bg } = resolveLeaveTypeStyle(req.leave_type_icon, req.leave_type_color)
                   const style = STATUS_STYLES[req.status?.toLowerCase()] || STATUS_STYLES.pending
-                  const dateRange = isSameDayStr(req.start_date, req.end_date)
-                    ? formatDateShort(req.start_date)
-                    : `${formatDateShort(req.start_date)} – ${formatDateShort(req.end_date)}`
+                  
+                  let dateRange = formatDateShort(req.start_date);
+                  if (!isSameDayStr(req.start_date, req.end_date)) {
+                    dateRange += ` - ${formatDateShort(req.end_date)}`;
+                  }
 
                   return (
                     <div 

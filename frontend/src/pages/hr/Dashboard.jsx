@@ -151,13 +151,14 @@ export default function Dashboard({ onNavigate }) {
           <div className="bg-white rounded-[40px] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-bold text-[22px] font-fredoka text-[#1f3747] tracking-wide">Employee Directory</h3>
-              <button
-                onClick={() => setShowAllEmployees(!showAllEmployees)}
-                className="text-[14px] font-bold text-[#3ea8e5] hover:text-[#2d8abf] transition-colors"
-                disabled={employees.length <= 3}
-              >
-                {showAllEmployees ? "Show Less" : "View All"}
-              </button>
+              {employees.length > 3 && (
+                <button
+                  onClick={() => setShowAllEmployees(!showAllEmployees)}
+                  className="text-[14px] font-bold text-[#3ea8e5] hover:text-[#2d8abf] transition-colors"
+                >
+                  {showAllEmployees ? "Show Less" : "View All"}
+                </button>
+              )}
             </div>
 
             {error ? (
