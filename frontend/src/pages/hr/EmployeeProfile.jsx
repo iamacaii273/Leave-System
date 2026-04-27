@@ -363,8 +363,25 @@ export default function EmployeeProfile({ onNavigate }) {
     }
   }
 
-  const displayedName = employee?.full_name || "Employee"
-  const headerStatusClass = employee?.is_active ? "bg-[#bfeadd] text-[#3b6661]" : "bg-[#e2e8f0] text-[#475569]"
+  const displayedName = employee?.full_name || "Employee";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isOnLeave = requests.some(r => {
+    if (r.status !== 'approved') return false; 
+    const start = new Date(r.start_date); start.setHours(0,0,0,0);
+    const end = new Date(r.end_date); end.setHours(23,59,59,999);
+    return today >= start && today <= end;
+  });
+
+  let displayStatus = employee?.is_active ? (isOnLeave ? "On Leave" : "Active") : "Inactive";
+  let headerStatusClass = "bg-[#e2e8f0] text-[#475569]"; // Inactive
+  if (employee?.is_active) {
+    if (isOnLeave) {
+      headerStatusClass = "bg-[#f0c3ae] text-[#a65d38]"; // On Leave
+    } else {
+      headerStatusClass = "bg-[#bfeadd] text-[#3b6661]"; // Active
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">
@@ -419,7 +436,7 @@ export default function EmployeeProfile({ onNavigate }) {
                       {displayedName}
                     </h1>
                     <span className={`${headerStatusClass} px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-widest self-start mt-1`}>
-                      {employee.is_active ? "Active" : "Inactive"}
+                      {displayStatus}
                     </span>
                   </div>
                   <div className="space-y-2">
