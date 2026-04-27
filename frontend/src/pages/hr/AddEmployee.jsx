@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { UserPlus, Briefcase, Lock, Save, ChevronDown, CheckCircle } from "lucide-react"
+import { UserPlus, Briefcase, Lock, Save, ChevronDown, CheckCircle, Building2, Globe } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 
@@ -249,23 +249,31 @@ export default function AddEmployee({ onNavigate }) {
                     <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3 md:col-span-2">
                   <label className="text-[13px] font-bold text-[#64748b] ml-1">Department <span className="text-red-400">*</span></label>
-                  {hrDepartments.length === 1 ? (
-                    <div className={`${inputClass} bg-[#e2e8f0] text-[#64748b] cursor-not-allowed`}>
-                      {hrDepartments[0].name}
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <select value={form.department_id} onChange={(e) => updateField('department_id', e.target.value)} className={`${inputClass} appearance-none cursor-pointer`}>
-                        {hrDepartments.length === 0 && <option value="">No departments assigned</option>}
-                        {hrDepartments.map(d => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#64748b] pointer-events-none" />
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2.5">
+                    {hrDepartments.length === 0 && (
+                      <p className="text-[13px] text-[#94a3b8] italic">No departments assigned</p>
+                    )}
+                    {hrDepartments.map(d => {
+                      const isChecked = form.department_id === d.id
+                      const isDisabled = hrDepartments.length === 1
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          disabled={isDisabled}
+                          className={`!px-6 !py-3 rounded-full text-[13px] font-bold transition-all flex items-center gap-2 border-2 ${isChecked
+                            ? '!bg-[#4c6367] !border-[#4c6367] !text-white shadow-md'
+                            : '!bg-white !border-[#edf2f7] !text-[#64748b] hover:!border-[#4c6367] hover:!text-[#4c6367]'} ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                          onClick={() => updateField('department_id', d.id)}
+                        >
+                          <Building2 size={15} />
+                          {d.name}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </section>

@@ -256,16 +256,18 @@ export default function Settings({ onNavigate, HeaderComponent }) {
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Department</label>
-                    <input
-                      type="text"
-                      value={profileData.department || "General"}
-                      readOnly
-                      className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#94a3b8] cursor-not-allowed outline-none"
-                    />
-                    <p className="text-[11px] text-[#94a3b8] mt-1.5 ml-1 italic">* Contact HR to change your department.</p>
-                  </div>
+                  {user?.role !== "Super Admin" && (
+                    <div>
+                      <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Department</label>
+                      <input
+                        type="text"
+                        value={profileData.department || "General"}
+                        readOnly
+                        className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#94a3b8] cursor-not-allowed outline-none"
+                      />
+                      <p className="text-[11px] text-[#94a3b8] mt-1.5 ml-1 italic">* Contact HR to change your department.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-12 pt-6 border-t border-[#f1f5f9] flex flex-col items-end gap-4">
                   <p className="text-[13px] text-[#64748b] font-medium italic"></p>

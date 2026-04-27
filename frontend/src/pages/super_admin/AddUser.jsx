@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { ChevronDown, CheckCircle, Bell, Settings, User, Briefcase, Lock, UserPlus } from "lucide-react"
+import { ChevronDown, CheckCircle, Bell, Settings, User, Briefcase, Lock, UserPlus, Building2 } from "lucide-react"
 import api from "../../services/api"
 import Header from "../../components/Header"
 
@@ -52,7 +52,7 @@ export default function AddUser({ onNavigate }) {
         setDepartments(depts)
         setRoles(roleRes.data.roles || [])
         if (depts.length > 0) {
-          setForm(p => ({ ...p, department: depts[0].id }))
+          setForm(p => ({ ...p, department: depts[0].id, managedDepartments: [depts[0].id] }))
         }
       } catch (err) {
         console.error("Failed to fetch metadata:", err)
@@ -65,6 +65,44 @@ export default function AddUser({ onNavigate }) {
   const [errorMsg, setErrorMsg] = useState('')
 
   const [showSuccess, setShowSuccess] = useState(false)
+
+  const isMultiSelect = form.role === 'rl000001-0000-0000-0000-000000000002' || form.role === 'rl000001-0000-0000-0000-000000000003';
+
+  const handleDeptToggle = (deptId) => {
+    if (isMultiSelect) {
+      const isSelected = form.managedDepartments.includes(deptId);
+      const newList = isSelected
+        ? form.managedDepartments.filter(id => id !== deptId)
+        : [...form.managedDepartments, deptId];
+
+      setForm(p => ({
+        ...p,
+        managedDepartments: newList,
+        department: newList.length > 0 ? newList[0] : ''
+      }));
+    } else {
+      setForm(p => ({
+        ...p,
+        department: deptId,
+        managedDepartments: [deptId]
+      }));
+    }
+  }
+
+  // Handle role changes to sync department selection
+  useEffect(() => {
+    if (!isMultiSelect && form.managedDepartments.length > 1) {
+      setForm(prev => ({
+        ...prev,
+        managedDepartments: prev.department ? [prev.department] : []
+      }));
+    } else if (isMultiSelect && form.department && !form.managedDepartments.includes(form.department)) {
+      setForm(prev => ({
+        ...prev,
+        managedDepartments: [prev.department, ...prev.managedDepartments]
+      }));
+    }
+  }, [form.role, isMultiSelect]);
 
   const selectedPhoneConfig = PHONE_PREFIXES.find(p => p.code === form.phonePrefix) || PHONE_PREFIXES[0]
 
@@ -235,50 +273,42 @@ export default function AddUser({ onNavigate }) {
                 <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={form.department}
-                  onChange={(e) => setForm(p => ({ ...p, department: e.target.value }))}
-                  className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
-                >
-                  {departments.length === 0 && <option value="">No departments available</option>}
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] pointer-events-none" />
+
+            <div className="flex flex-col gap-4 md:col-span-2 bg-[#f8fafc] p-8 rounded-[32px] border border-[#edf2f7] mb-6">
+              <div>
+                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase mb-1 block">
+                  Department Assignment <span className="text-red-500">*</span>
+                </label>
+                <p className="text-[11px] text-[#64748b] font-medium mb-4">
+                  {isMultiSelect ? "Select one or more departments for Manager/HR access." : "Assign a primary department to this user."}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5">
+                {departments.length === 0 && (
+                  <p className="text-[13px] text-[#94a3b8] italic">No departments available</p>
+                )}
+                {departments.map(d => {
+                  const isChecked = isMultiSelect
+                    ? form.managedDepartments.includes(d.id)
+                    : form.department === d.id
+
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={`!px-6 !py-3 rounded-full text-[13px] font-bold transition-all flex items-center gap-2 border-2 ${isChecked
+                        ? '!bg-[#4c6367] !border-[#4c6367] !text-white shadow-md'
+                        : '!bg-white !border-[#edf2f7] !text-[#64748b] hover:!border-[#4c6367] hover:!text-[#4c6367]'}`}
+                      onClick={() => handleDeptToggle(d.id)}
+                    >
+                      <Building2 size={15} />
+                      {d.name}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-
-            {/* Managed Departments for Manager/HR */}
-            {(form.role === 'rl000001-0000-0000-0000-000000000002' || form.role === 'rl000001-0000-0000-0000-000000000003') && (
-              <div className="flex flex-col gap-2 md:col-span-2 bg-[#f8fafb] p-6 rounded-3xl border border-[#edf2f7]">
-                <label className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">Department Access <span className="text-[9px] lowercase italic font-normal">(Managers/HR can manage multiple)</span></label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-                  {departments.map(d => (
-                    <label key={d.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#edf2f7] cursor-pointer transition-colors border border-transparent hover:border-[#cbd5e1]">
-                      <input
-                        type="checkbox"
-                        checked={form.managedDepartments.includes(d.id)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setForm(p => ({
-                            ...p,
-                            managedDepartments: checked
-                              ? [...p.managedDepartments, d.id]
-                              : p.managedDepartments.filter(id => id !== d.id)
-                          }));
-                        }}
-                        className="w-4 h-4 rounded border-[#cbd5e1] text-[#3ea8e5] focus:ring-[#3ea8e5]"
-                      />
-                      <span className="text-[14px] font-bold text-[#323940]">{d.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Access Credentials */}

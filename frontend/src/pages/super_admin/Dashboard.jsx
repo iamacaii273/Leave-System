@@ -109,9 +109,6 @@ export default function SuperAdminDashboard({ onNavigate }) {
     { label: 'TOTAL RESIGNED', value: totalResigned.toLocaleString(), icon: UserRoundX, iconBg: '#fde2e4', iconColor: '#b5283d' },
   ]
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col font-nunito">
       {/* Header */}
@@ -119,10 +116,10 @@ export default function SuperAdminDashboard({ onNavigate }) {
 
       <main className="max-w-6xl mx-auto px-6 py-12 w-full flex-grow">
 
-        {/* Greeting */}
+        {/* Greeting Section */}
         <div className="mb-10">
           <h1 className="text-[56px] font-fredoka font-bold text-[#1f3747] mb-1 leading-tight">
-            {greeting}
+            Super Admin Workspace
           </h1>
           <p className="text-[#64748b] text-[18px] font-medium max-w-2xl">
             Manage your global workforce and sanctuary operations from one central, atmospheric workspace.
@@ -344,7 +341,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   )
 }
