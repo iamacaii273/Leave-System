@@ -317,6 +317,7 @@ export default function Dashboard({ onNavigate }) {
   const [totalMembers, setTotalMembers] = useState(0)
   const [outToday, setOutToday] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [showAllRequests, setShowAllRequests] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -353,7 +354,11 @@ export default function Dashboard({ onNavigate }) {
   const acknowledged = requests.filter(r => r.status === "acknowledged")
   const actionableCount = pending.length + acknowledged.length
   const approved = requests.filter(r => r.status === "approved")
-  const recent = requests.slice(0, 5)
+  
+  const displayedRequests = useMemo(() => {
+    return showAllRequests ? requests : requests.slice(0, 5)
+  }, [requests, showAllRequests])
+  
   const displayName = user?.full_name?.split(" ")[0] || "Boss"
 
   return (
@@ -410,7 +415,7 @@ export default function Dashboard({ onNavigate }) {
         <div className="grid lg:grid-cols-[1fr_280px] gap-6">
 
           {/* Recent Leave Requests */}
-          <div className="bg-white rounded-[40px] p-8 shadow-sm">
+          <div className="bg-white rounded-[40px] p-8 shadow-sm flex flex-col h-full">
             <div className="flex items-start justify-between mb-7 px-1">
               <div>
                 <h3 className="font-bold text-[22px] font-fredoka text-[#3f4a51] mb-1 tracking-wide">
@@ -418,21 +423,23 @@ export default function Dashboard({ onNavigate }) {
                 </h3>
                 <p className="text-[14px] font-medium text-[#94a3b8]">Your team's latest activity</p>
               </div>
-              <button
-                onClick={() => onNavigate && onNavigate("history")}
-                className="text-[14px] font-bold text-[#5e6c7e] hover:text-[#3f4a51] transition-colors pt-2 cursor-pointer"
-              >
-                View all
-              </button>
+              {requests.length > 5 && (
+                <button
+                  onClick={() => setShowAllRequests(!showAllRequests)}
+                  className="text-[14px] font-bold text-[#5e6c7e] hover:text-[#3f4a51] transition-colors pt-2 cursor-pointer"
+                >
+                  {showAllRequests ? "Show Less" : "View all"}
+                </button>
+              )}
             </div>
 
             {loading ? (
               <p className="text-center text-[#94a3b8] py-12 font-medium">Loading…</p>
-            ) : recent.length === 0 ? (
+            ) : requests.length === 0 ? (
               <p className="text-center text-[#94a3b8] py-12 font-medium">No leave requests yet.</p>
             ) : (
-              <div className="space-y-3">
-                {recent.map(req => {
+              <div className={`flex-grow space-y-3 ${showAllRequests ? 'max-h-[440px] overflow-y-auto pr-2' : ''}`}>
+                {displayedRequests.map(req => {
                   const { Icon, color, bg } = resolveLeaveTypeStyle(req.leave_type_icon, req.leave_type_color)
                   const style = STATUS_STYLES[req.status?.toLowerCase()] || STATUS_STYLES.pending
 
@@ -453,31 +460,31 @@ export default function Dashboard({ onNavigate }) {
                       </div>
 
                       {/* Person */}
-                      <div className="min-w-[130px]">
-                        <p className="font-bold text-[14px] text-[#2d3e50]">{req.full_name}</p>
-                        <p className="text-[12px] text-[#94a3b8] font-medium">{req.email}</p>
+                      <div className="flex-1 min-w-[130px]">
+                        <p className="font-bold text-[14px] text-[#2d3e50] truncate">{req.full_name}</p>
+                        <p className="text-[12px] text-[#94a3b8] font-medium truncate">{req.email}</p>
                       </div>
 
                       {/* Leave type */}
-                      <div className="flex items-center gap-2 min-w-[130px]">
+                      <div className="flex-1 flex items-center gap-2 min-w-[130px]">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
                           <Icon size={15} color={color} strokeWidth={2.5} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-[10px] font-[800] tracking-widest uppercase text-[#94a3b8]">TYPE</p>
-                          <p className="font-bold text-[13px] text-[#3f4a51]">{req.leave_type_name}</p>
+                          <p className="font-bold text-[13px] text-[#3f4a51] truncate">{req.leave_type_name}</p>
                         </div>
                       </div>
 
                       {/* Duration */}
-                      <div className="min-w-[140px]">
+                      <div className="flex-1 min-w-[140px]">
                         <p className="text-[10px] font-[800] tracking-widest uppercase text-[#94a3b8]">DURATION</p>
-                        <p className="font-bold text-[13px] text-[#3f4a51]">{dateRange}</p>
-                        <p className="text-[11px] text-[#94a3b8]">{formatDurationText(req.total_days)}</p>
+                        <p className="font-bold text-[13px] text-[#3f4a51] truncate">{dateRange}</p>
+                        <p className="text-[11px] text-[#94a3b8] truncate">{formatDurationText(req.total_days)}</p>
                       </div>
 
                       {/* Status */}
-                      <div className="ml-auto">
+                      <div className="ml-auto shrink-0">
                         <span
                           className="px-4 py-1.5 rounded-full text-[11px] font-[800] tracking-wide uppercase whitespace-nowrap"
                           style={{ backgroundColor: style.bg, color: style.text }}
