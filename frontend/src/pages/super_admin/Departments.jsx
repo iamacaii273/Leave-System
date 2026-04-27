@@ -7,6 +7,7 @@ export default function Departments({ onNavigate }) {
   const [departments, setDepartments] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
 
   // Modal states
   const [showModal, setShowModal] = useState(false)
@@ -31,9 +32,13 @@ export default function Departments({ onNavigate }) {
     fetchDepartments()
   }, [])
 
-  const filtered = searchTerm
-    ? departments.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    : departments
+  const filtered = departments.filter(d => {
+    const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || 
+                          (statusFilter === "active" && d.is_active === 1) || 
+                          (statusFilter === "inactive" && d.is_active === 0);
+    return matchesSearch && matchesStatus;
+  })
 
   const handleOpenAdd = () => {
     setCurrentDept({ id: "", name: "", is_active: 1 })
@@ -104,16 +109,34 @@ export default function Departments({ onNavigate }) {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={18} />
-          <input
-            type="text"
-            placeholder="Search departments by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white rounded-2xl py-4 pl-12 pr-6 text-[15px] font-medium text-[#3f4a51] placeholder-[#94a3b8] shadow-sm outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all"
-          />
+        {/* Search and Filter */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#94a3b8]" size={18} />
+            <input
+              type="text"
+              placeholder="Search departments by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white rounded-2xl py-4 pl-12 pr-6 text-[15px] font-medium text-[#3f4a51] placeholder-[#94a3b8] shadow-sm outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all"
+            />
+          </div>
+          <div className="relative min-w-[180px]">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full bg-white rounded-2xl py-4 pl-6 pr-10 text-[15px] font-bold text-[#3f4a51] shadow-sm outline-none focus:ring-2 focus:ring-[#567278]/20 transition-all appearance-none cursor-pointer border-none"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-[#94a3b8]">
+              <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </div>
         </div>
 
         {/* List */}

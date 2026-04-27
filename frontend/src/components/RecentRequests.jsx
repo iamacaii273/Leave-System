@@ -61,7 +61,11 @@ export default function RecentRequests({ requests = [], onNavigate }) {
             }
 
             return (
-              <div key={req.id} className="flex items-center justify-between p-4 bg-[#f9fafb] rounded-[24px]">
+              <div 
+                key={req.id} 
+                onClick={() => onNavigate && onNavigate(`requests/${req.id}`)}
+                className="flex items-center justify-between p-4 bg-[#f9fafb] rounded-[24px] cursor-pointer hover:bg-[#f1f5f9] transition-all hover:scale-[1.005] active:scale-[0.995]"
+              >
                 <div className="flex items-center gap-4">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center p-3"
