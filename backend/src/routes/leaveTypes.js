@@ -139,7 +139,7 @@ router.post(
             const intersection = department_ids.filter(id => existingDeptIds.includes(id));
             if (intersection.length > 0) {
               return res.status(400).json({
-                message: `ชื่อ "${name}" ถูกใช้งานไปแล้วในบางแผนกที่คุณเลือก กรุณาตรวจสอบอีกครั้งครับ`
+                message: `ชื่อ "${name}" This name has already been used.`
               });
             }
           }
@@ -298,15 +298,41 @@ router.put(
         if (name.trim() === "") {
           return res.status(400).json({ message: "name cannot be empty." });
         }
-        // Simplified unique check (can be improved to check across departments if needed)
-        const [duplicate] = await pool.query(
-          "SELECT id FROM leave_types WHERE name = ? AND id != ?",
-          [name.trim(), id],
+        // Check for duplicate names within the same department scope (Method B)
+        const [existingTypes] = await pool.query(
+          "SELECT id FROM leave_types WHERE name = ? AND id != ? AND is_active = 1",
+          [name.trim(), id]
         );
-        if (duplicate.length > 0) {
-          return res
-            .status(409)
-            .json({ message: "A leave type with this name already exists." });
+
+        if (existingTypes.length > 0) {
+          // If department_ids is not provided in the request, we must check against the current departments
+          let deptsToCheck = department_ids;
+          if (deptsToCheck === undefined) {
+            const [currentLTD] = await pool.query(
+              "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
+              [id]
+            );
+            deptsToCheck = currentLTD.map((r) => r.department_id);
+          }
+
+          for (const lt of existingTypes) {
+            const [ltdRows] = await pool.query(
+              "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
+              [lt.id]
+            );
+            const existingDeptIds = ltdRows.map((r) => r.department_id);
+
+            // 1. Global check
+            if (existingDeptIds.length === 0 && deptsToCheck.length === 0) {
+              return res.status(400).json({ message: `ชื่อ "${name}" แบบ Global มีอยู่แล้วในระบบครับ` });
+            }
+
+            // 2. Overlap check
+            const intersection = deptsToCheck.filter((d) => existingDeptIds.includes(d));
+            if (intersection.length > 0) {
+              return res.status(400).json({ message: `ชื่อ "${name}" This name has already been used.` });
+            }
+          }
         }
         fields.push("name = ?"); values.push(name.trim());
       }
