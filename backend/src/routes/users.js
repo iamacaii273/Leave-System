@@ -497,9 +497,33 @@ router.get(
            p.name AS position,
            u.department_id,
            d.name AS department,
-           COALESCE(SUM(lb.total_days), 0) AS total_leave_quota,
-           COALESCE(SUM(lb.used_days), 0) AS used_leave_quota,
-           COALESCE(SUM(lb.remaining_days), 0) AS remaining_leave_quota
+           COALESCE(SUM(
+             CASE 
+               WHEN lt.is_active = 1 
+                    AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
+                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+               THEN lb.total_days 
+               ELSE 0 
+             END
+           ), 0) AS total_leave_quota,
+           COALESCE(SUM(
+             CASE 
+               WHEN lt.is_active = 1 
+                    AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
+                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+               THEN lb.used_days 
+               ELSE 0 
+             END
+           ), 0) AS used_leave_quota,
+           COALESCE(SUM(
+             CASE 
+               WHEN lt.is_active = 1 
+                    AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
+                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+               THEN lb.remaining_days 
+               ELSE 0 
+             END
+           ), 0) AS remaining_leave_quota
          FROM users u
          JOIN roles r ON u.role_id = r.id
          JOIN positions p ON u.position_id = p.id
@@ -507,6 +531,7 @@ router.get(
          LEFT JOIN leave_balances lb
            ON lb.user_id = u.id
           AND lb.year = ?
+         LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
          ${whereClause}
          GROUP BY
            u.id,
