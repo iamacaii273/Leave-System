@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, ChevronLeft, ChevronRight, Building2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
+import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
 
 function getInitials(name = "") {
@@ -40,6 +41,17 @@ function formatQuota(used, total) {
 
 export default function EmployeeList({ onNavigate }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  
+  const [selectedDept, setSelectedDept] = useState("all")
+  const managedDepts = useMemo(() => {
+    if (!user?.managed_department_ids || !user?.managed_departments) return []
+    return user.managed_department_ids.map((id, i) => ({
+      id,
+      name: user.managed_departments[i]
+    }))
+  }, [user])
+
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const [employees, setEmployees] = useState([])
@@ -55,7 +67,8 @@ export default function EmployeeList({ onNavigate }) {
         setLoading(true)
         setError("")
 
-        const { data } = await api.get("/users/employees-summary")
+        const query = selectedDept === "all" ? "" : `?department_id=${selectedDept}`;
+        const { data } = await api.get(`/users/employees-summary${query}`)
         setEmployees(data?.users || [])
       } catch (err) {
         console.error("HR employee list error:", err)
@@ -66,7 +79,7 @@ export default function EmployeeList({ onNavigate }) {
     }
 
     loadEmployees()
-  }, [])
+  }, [selectedDept])
 
   const filteredEmployees = useMemo(() => {
     const source = employees.map((emp) => ({
@@ -97,6 +110,11 @@ export default function EmployeeList({ onNavigate }) {
     setCurrentPage(1)
   }
 
+  const handleDeptChange = (deptId) => {
+    setSelectedDept(deptId)
+    setCurrentPage(1)
+  }
+
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages)
@@ -120,6 +138,36 @@ export default function EmployeeList({ onNavigate }) {
             valuable assets with ease.
           </p>
         </div>
+
+        {managedDepts.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-8">
+            <button
+              onClick={() => handleDeptChange("all")}
+              className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
+                selectedDept === "all"
+                  ? "bg-[#4c6367] text-white"
+                  : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
+              }`}
+            >
+              <Building2 size={16} />
+              All Departments
+            </button>
+            {managedDepts.map(dept => (
+              <button
+                key={dept.id}
+                onClick={() => handleDeptChange(dept.id)}
+                className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
+                  selectedDept === dept.id
+                    ? "bg-[#4c6367] text-white"
+                    : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
+                }`}
+              >
+                <Building2 size={16} />
+                {dept.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-4 mb-8">
           <div className="relative flex-grow">

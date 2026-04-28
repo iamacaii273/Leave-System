@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
-import { ShieldAlert, User, KeyRound, Save, BadgeCheck, Bell, Smartphone, Lock, LogOut, ChevronDown } from "lucide-react"
+import { ShieldAlert, User, KeyRound, Save, BadgeCheck, Bell, Smartphone, Lock, LogOut, ChevronDown, Building2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 export default function Settings({ onNavigate, HeaderComponent }) {
@@ -258,18 +258,25 @@ export default function Settings({ onNavigate, HeaderComponent }) {
                   </div>
                   {user?.role !== "Super Admin" && (
                     <div>
-                      <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Department</label>
-                      <input
-                        type="text"
-                        value={
-                          (user?.managed_departments && user.managed_departments.length > 0)
-                            ? user.managed_departments.join(", ")
-                            : (profileData.department || "General")
-                        }
-                        readOnly
-                        className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#94a3b8] cursor-not-allowed outline-none"
-                      />
-                      <p className="text-[11px] text-[#94a3b8] mt-1.5 ml-1 italic">* Contact HR to change your department.</p>
+                      <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-3">Managed Departments</label>
+                      {user?.managed_departments && user.managed_departments.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {user.managed_departments.map((dept, idx) => (
+                            <div key={idx} className="bg-[#4c6367] text-white px-5 py-1.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap">
+                              <Building2 size={16} />
+                              {dept}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={profileData.department || "General"}
+                          readOnly
+                          className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#94a3b8] cursor-not-allowed outline-none"
+                        />
+                      )}
+                      <p className="text-[11px] text-[#94a3b8] mt-2 ml-1 italic">* Contact Super Admin to change your managed departments.</p>
                     </div>
                   )}
                 </div>

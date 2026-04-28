@@ -515,13 +515,19 @@ router.get(
       const params = [currentYear];
 
       if (req.user.role === "HR") {
-        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
-        if (deptIds.length > 0) {
-          whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
-          params.push(deptIds);
+        const selectedDept = req.query.department_id;
+        if (selectedDept && selectedDept !== "all") {
+          whereClause += " AND u.department_id = ?";
+          params.push(selectedDept);
         } else {
-          whereClause += " AND u.department_id IS NULL";
+          const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+          const deptIds = managedDepts.map(d => d.department_id);
+          if (deptIds.length > 0) {
+            whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
+            params.push(deptIds);
+          } else {
+            whereClause += " AND u.department_id IS NULL";
+          }
         }
       }
 

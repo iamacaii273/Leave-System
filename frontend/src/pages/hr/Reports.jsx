@@ -1,8 +1,9 @@
-import { Umbrella, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { Umbrella, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X, Building2 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
+import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
 
 // Utilities
@@ -99,6 +100,16 @@ function stripTime(d) {
 
 export default function Reports({ onNavigate }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  
+  const [selectedDept, setSelectedDept] = useState("all")
+  const managedDepts = useMemo(() => {
+    if (!user?.managed_department_ids || !user?.managed_departments) return []
+    return user.managed_department_ids.map((id, i) => ({
+      id,
+      name: user.managed_departments[i]
+    }))
+  }, [user])
 
   const [filter, setFilter] = useState("all")
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -148,10 +159,11 @@ export default function Reports({ onNavigate }) {
     async function loadData() {
       setIsLoading(true);
       try {
+        const qDeptFirst = selectedDept === "all" ? "" : `?department_id=${selectedDept}`;
         const [sumRes, balRes, histRes] = await Promise.all([
-          api.get("/reports/leave-summary"),
-          api.get("/reports/employee-balances"),
-          api.get("/leave-requests") // HR gets all requests
+          api.get(`/reports/leave-summary${qDeptFirst}`),
+          api.get(`/reports/employee-balances${qDeptFirst}`),
+          api.get(`/leave-requests${qDeptFirst}`) // HR gets requests filtered by dept
         ]);
 
         const loadedSummary = sumRes.data.summary.map(s => ({
@@ -214,7 +226,7 @@ export default function Reports({ onNavigate }) {
       }
     }
     loadData();
-  }, []);
+  }, [selectedDept]);
 
   const tabFilters = ["All", "Approved", "Pending", "Rejected", "Acknowledged", "Cancelled"]
 
@@ -300,6 +312,36 @@ export default function Reports({ onNavigate }) {
             Consolidated analytics and history of organizational leave usage.
           </p>
         </div>
+
+        {managedDepts.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-4">
+            <button
+              onClick={() => setSelectedDept("all")}
+              className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
+                selectedDept === "all"
+                  ? "bg-[#4c6367] text-white"
+                  : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
+              }`}
+            >
+              <Building2 size={16} />
+              All Departments
+            </button>
+            {managedDepts.map(dept => (
+              <button
+                key={dept.id}
+                onClick={() => setSelectedDept(dept.id)}
+                className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
+                  selectedDept === dept.id
+                    ? "bg-[#4c6367] text-white"
+                    : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
+                }`}
+              >
+                <Building2 size={16} />
+                {dept.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Card 1: Leave Summary by Type */}
         <div className="bg-[#f4f7f9] rounded-[24px] p-8 mb-4">

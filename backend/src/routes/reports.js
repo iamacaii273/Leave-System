@@ -7,6 +7,13 @@ const guard = [verifyToken, requireRole("HR", "Super Admin")];
 
 function getDeptFilter(req, alias = "u", includeAnd = true) {
   if (req.user.role === "HR") {
+    const selectedDept = req.query.department_id;
+    if (selectedDept && selectedDept !== "all") {
+      return {
+        sql: `${includeAnd ? " AND" : ""} ${alias}.department_id = ?`,
+        param: selectedDept
+      };
+    }
     return {
       sql: `${includeAnd ? " AND" : ""} (${alias}.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR ${alias}.department_id IS NULL)`,
       param: req.user.id
