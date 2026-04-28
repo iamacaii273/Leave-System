@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import Header from "../../components/Header"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 import {
   ClipboardList, CalendarCheck, UserCheck,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock
@@ -313,6 +314,7 @@ function TeamCapacity({ totalMembers, outToday }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard({ onNavigate }) {
   const { user } = useAuth()
+  const { selectedDepartment } = useDepartment()
   const [requests, setRequests] = useState([])
   const [totalMembers, setTotalMembers] = useState(0)
   const [outToday, setOutToday] = useState(0)
@@ -322,12 +324,19 @@ export default function Dashboard({ onNavigate }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const teamRes = await api.get("/leave-requests/team").catch(() => ({ data: { leaveRequests: [] } }))
+        let teamUrl = "/leave-requests/team"
+        let usersUrl = "/users"
+        if (selectedDepartment) {
+          teamUrl += `?department_id=${selectedDepartment}`
+          usersUrl += `?department_id=${selectedDepartment}`
+        }
+
+        const teamRes = await api.get(teamUrl).catch(() => ({ data: { leaveRequests: [] } }))
         const all = teamRes.data.leaveRequests || []
         setRequests(all)
 
         // Count real team members (Employees only)
-        const usersRes = await api.get("/users").catch(() => ({ data: { users: [] } }))
+        const usersRes = await api.get(usersUrl).catch(() => ({ data: { users: [] } }))
         const teamUsers = (usersRes.data.users || []).filter(u => u.role === 'Employee')
         const fallbackSize = new Set(all.map(r => r.user_id)).size
         setTotalMembers(teamUsers.length > 0 ? teamUsers.length : fallbackSize)
@@ -348,17 +357,17 @@ export default function Dashboard({ onNavigate }) {
       }
     }
     load()
-  }, [])
+  }, [selectedDepartment])
 
   const pending = requests.filter(r => r.status === "pending")
   const acknowledged = requests.filter(r => r.status === "acknowledged")
   const actionableCount = pending.length + acknowledged.length
   const approved = requests.filter(r => r.status === "approved")
-  
+
   const displayedRequests = useMemo(() => {
     return showAllRequests ? requests : requests.slice(0, 5)
   }, [requests, showAllRequests])
-  
+
   const displayName = user?.full_name?.split(" ")[0] || "Boss"
 
   return (

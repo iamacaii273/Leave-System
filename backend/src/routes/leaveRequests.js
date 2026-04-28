@@ -315,11 +315,20 @@ router.get(
       }
 
       if (req.user.role === "Employee") {
-        conditions.push("u.department_id = ?");
-        params.push(req.user.department_id || null);
+        // Employee only sees their own department (or filter, though usually just their own)
+        const filterDept = req.query.department_id || req.user.department_id;
+        if (String(filterDept) === String(req.user.department_id)) {
+          conditions.push("u.department_id = ?");
+          params.push(req.user.department_id || null);
+        } else {
+          conditions.push("1 = 0");
+        }
       } else if (req.user.role === "Manager") {
         const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
         if (deptIds.length > 0) {
           conditions.push(`u.department_id IN (?)`);
           params.push(deptIds);
@@ -328,7 +337,10 @@ router.get(
         }
       } else if (req.user.role === "HR") {
         const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
         if (deptIds.length > 0) {
           conditions.push(`u.department_id IN (?)`);
           params.push(deptIds);
@@ -521,7 +533,10 @@ router.get(
 
       if (req.user.role === "Manager") {
         const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
 
         if (deptIds.length > 0) {
           conditions.push(`u.department_id IN (?)`);
@@ -532,13 +547,22 @@ router.get(
         }
       } else if (req.user.role === "HR") {
         const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
 
         if (deptIds.length > 0) {
-          conditions.push(`(u.department_id IN (?) OR u.department_id IS NULL)`);
+          // If no specific department is queried, HR might see NULL dept users. 
+          // If a specific dept is queried, they ONLY see that dept.
+          if (req.query.department_id) {
+            conditions.push(`u.department_id IN (?)`);
+          } else {
+            conditions.push(`(u.department_id IN (?) OR u.department_id IS NULL)`);
+          }
           params.push(deptIds);
         } else {
-          conditions.push("u.department_id IS NULL");
+          conditions.push("1 = 0"); // Strict cutoff if filter leads to empty
         }
       }
 

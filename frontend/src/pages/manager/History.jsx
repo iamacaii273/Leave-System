@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
@@ -122,6 +123,7 @@ function HistoryRow({ req, onNavigate }) {
 
 // ─── History Page ─────────────────────────────────────────────────────────────
 export default function History({ onNavigate }) {
+  const { selectedDepartment } = useDepartment()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
@@ -129,12 +131,26 @@ export default function History({ onNavigate }) {
   const [activeToday, setActiveToday] = useState(0)
 
   useEffect(() => {
+    let appUrl = "/leave-requests/team?status=approved"
+    let rejUrl = "/leave-requests/team?status=rejected"
+    let canUrl = "/leave-requests/team?status=cancelled"
+    let teamUrl = "/leave-requests/team"
+    let usersUrl = "/users"
+
+    if (selectedDepartment) {
+      appUrl += `&department_id=${selectedDepartment}`
+      rejUrl += `&department_id=${selectedDepartment}`
+      canUrl += `&department_id=${selectedDepartment}`
+      teamUrl += `?department_id=${selectedDepartment}`
+      usersUrl += `?department_id=${selectedDepartment}`
+    }
+
     Promise.all([
-      api.get("/leave-requests/team?status=approved").catch(() => ({ data: { leaveRequests: [] } })),
-      api.get("/leave-requests/team?status=rejected").catch(() => ({ data: { leaveRequests: [] } })),
-      api.get("/leave-requests/team?status=cancelled").catch(() => ({ data: { leaveRequests: [] } })),
-      api.get("/leave-requests/team").catch(() => ({ data: { leaveRequests: [] } })),
-      api.get("/users").catch(() => ({ data: { users: [] } })),
+      api.get(appUrl).catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(rejUrl).catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(canUrl).catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(teamUrl).catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(usersUrl).catch(() => ({ data: { users: [] } })),
     ]).then(([appRes, rejRes, canRes, allRes, usersRes]) => {
       // History list = approved + rejected + cancelled, sorted newest first
       const hist = [
@@ -159,7 +175,7 @@ export default function History({ onNavigate }) {
       const totalMembers = teamUsers.length > 0 ? teamUsers.length : new Set(allReqs.map(r => r.user_id)).size
       setActiveToday(Math.max(0, totalMembers - outIds.size))
     }).finally(() => setLoading(false))
-  }, [])
+  }, [selectedDepartment])
 
   const FILTERS = [
     { key: "all", label: "All" },

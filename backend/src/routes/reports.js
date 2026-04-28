@@ -7,19 +7,18 @@ const guard = [verifyToken, requireRole("HR", "Super Admin")];
 
 function getDeptFilter(req, alias = "u", includeAnd = true) {
   if (req.user.role === "HR") {
-    const selectedDept = req.query.department_id;
-    if (selectedDept && selectedDept !== "all") {
+    if (req.query.department_id) {
       return {
-        sql: `${includeAnd ? " AND" : ""} ${alias}.department_id = ?`,
-        param: selectedDept
+        sql: `${includeAnd ? " AND" : ""} ${alias}.department_id = ? AND EXISTS (SELECT 1 FROM hr_departments WHERE user_id = ? AND department_id = ?)`,
+        param: [req.query.department_id, req.user.id, req.query.department_id]
       };
     }
     return {
-      sql: `${includeAnd ? " AND" : ""} (${alias}.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?) OR ${alias}.department_id IS NULL)`,
-      param: req.user.id
+      sql: `${includeAnd ? " AND" : ""} ${alias}.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?)`,
+      param: [req.user.id]
     };
   }
-  return { sql: "", param: null };
+  return { sql: "", param: [] };
 }
 
 // GET /dashboard - HR dashboard stats and employee directory.
@@ -27,8 +26,8 @@ router.get("/dashboard", ...guard, async (req, res) => {
   try {
     const deptFilter = getDeptFilter(req, "u");
     const paramsStats = [];
-    if (deptFilter.param) {
-      paramsStats.push(deptFilter.param, deptFilter.param, deptFilter.param);
+    if (deptFilter.param.length > 0) {
+      paramsStats.push(...deptFilter.param, ...deptFilter.param, ...deptFilter.param);
     }
 
     const [[stats]] = await pool.query(
@@ -100,7 +99,7 @@ router.get("/dashboard", ...guard, async (req, res) => {
            ) THEN 0
            ELSE 1
          END,
-         u.full_name ASC`, deptFilter.param ? [deptFilter.param] : []
+         u.full_name ASC`, deptFilter.param
     );
 
     res.json({ stats, employees });
@@ -155,7 +154,7 @@ router.get("/overview", ...guard, async (req, res) => {
              AND CURDATE() BETWEEN start_date AND end_date
              ${deptFilterLr.sql}
          ) AS total_on_leave_today`,
-      deptFilterU.param ? [deptFilterU.param, deptFilterU.param, deptFilterU.param, deptFilterU.param] : []
+      [...deptFilterU.param, ...deptFilterLr.param, ...deptFilterLr.param, ...deptFilterLr.param]
     );
 
     res.json({ stats: rows[0] });
@@ -176,17 +175,22 @@ router.get("/leave-summary", ...guard, async (req, res) => {
   try {
     const deptFilterU = getDeptFilter(req, "u", true);
 
-    const params = [year];
-    if (deptFilterU.param) params.push(deptFilterU.param);
-    params.push(year);
-    if (deptFilterU.param) params.push(deptFilterU.param);
+    const params = [year, ...deptFilterU.param, year, ...deptFilterU.param];
 
     // Add param for the new lt.department_id scope filter
-    if (req.user.role === "HR") params.push(req.user.id);
+    let typeScopeSql = `AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = lt.id AND ltd.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))`;
+    if (req.user.role === "HR") {
+      if (req.query.department_id) {
+        typeScopeSql = `AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = lt.id AND ltd.department_id = ?) AND EXISTS (SELECT 1 FROM hr_departments WHERE user_id = ? AND department_id = ?)`;
+        params.push(req.query.department_id, req.user.id, req.query.department_id);
+      } else {
+        params.push(req.user.id);
+      }
+    }
 
     const [summary] = await pool.query(
       `SELECT
-         lt.id AS leave_type_id,
+         MIN(lt.id) AS leave_type_id,
          lt.name AS leave_type_name,
          COUNT(lr.id) AS total_requests,
          SUM(CASE WHEN lr.status = 'approved' THEN 1 ELSE 0 END) AS approved_requests,
@@ -196,7 +200,9 @@ router.get("/leave-summary", ...guard, async (req, res) => {
            FROM leave_balances lb
            JOIN users u ON lb.user_id = u.id
            JOIN roles r ON u.role_id = r.id
-           WHERE lb.leave_type_id = lt.id AND lb.year = ? AND r.name = 'Employee'
+           WHERE lb.leave_type_id IN (SELECT id FROM leave_types WHERE name = lt.name) 
+             AND lb.year = ? 
+             AND r.name = 'Employee'
              AND ((YEAR(CURDATE()) - YEAR(u.hire_date)) * 12 + (MONTH(CURDATE()) - MONTH(u.hire_date))) >= lt.min_service_months
              ${deptFilterU.sql}
          ) AS total_allocated_days
@@ -210,8 +216,8 @@ router.get("/leave-summary", ...guard, async (req, res) => {
            ${deptFilterU.sql}
        ) lr ON lr.leave_type_id = lt.id
        WHERE lt.is_active = 1
-         AND (lt.department_id IS NULL OR lt.department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))
-       GROUP BY lt.id, lt.name
+         ${req.user.role === "HR" ? typeScopeSql : ""}
+       GROUP BY lt.name
        ORDER BY lt.name ASC`,
       params
     );
@@ -233,8 +239,7 @@ router.get("/monthly", ...guard, async (req, res) => {
 
   try {
     const deptFilterU = getDeptFilter(req, "u", true);
-    const params = [year];
-    if (deptFilterU.param) params.push(deptFilterU.param);
+    const params = [year, ...deptFilterU.param];
 
     const [monthly] = await pool.query(
       `SELECT
@@ -273,23 +278,42 @@ router.get("/employee-balances", ...guard, async (req, res) => {
 
     // 1. Fetch all active employees
     const [employees] = await pool.query(
-      `SELECT u.id, u.full_name, u.hire_date 
-       FROM users u 
-       JOIN roles r ON u.role_id = r.id 
+      `SELECT u.id, u.full_name, u.hire_date, u.department_id, d.name AS department_name
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       LEFT JOIN departments d ON u.department_id = d.id
        WHERE r.name = 'Employee' AND u.deleted_at IS NULL AND u.is_active = 1
        ${deptFilterU.sql}
-       ORDER BY u.full_name ASC`,
-      deptFilterU.param ? [deptFilterU.param] : []
+       ORDER BY d.name ASC, u.full_name ASC`,
+      deptFilterU.param
     );
 
-    // 2. Fetch all relevant active leave types
-    let ltQuery = "SELECT id, name, min_service_months, department_id FROM leave_types WHERE is_active = 1";
+    // 2. Fetch all relevant active leave types with their department scopes
+    let ltQuery = `
+      SELECT id, name, min_service_months 
+      FROM leave_types 
+      WHERE is_active = 1
+    `;
     let ltParams = [];
     if (req.user.role === "HR") {
-      ltQuery += " AND (department_id IS NULL OR department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))";
-      ltParams.push(req.user.id);
+      if (req.query.department_id) {
+        ltQuery += " AND id IN (SELECT leave_type_id FROM leave_type_departments WHERE department_id = ?) AND EXISTS (SELECT 1 FROM hr_departments WHERE user_id = ? AND department_id = ?)";
+        ltParams.push(req.query.department_id, req.user.id, req.query.department_id);
+      } else {
+        ltQuery += " AND id IN (SELECT leave_type_id FROM leave_type_departments WHERE department_id IN (SELECT department_id FROM hr_departments WHERE user_id = ?))";
+        ltParams.push(req.user.id);
+      }
     }
     const [leaveTypes] = await pool.query(ltQuery, ltParams);
+
+    // Fetch department_ids for each leave type for scoping filter
+    for (const lt of leaveTypes) {
+      const [ltdRows] = await pool.query(
+        "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
+        [lt.id]
+      );
+      lt.department_ids = ltdRows.map(r => r.department_id);
+    }
 
     // 3. Fetch all existing balances for the given year
     const [balances] = await pool.query(
@@ -312,8 +336,8 @@ router.get("/employee-balances", ...guard, async (req, res) => {
         serviceMonths = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
       }
 
-      // For the report, only show types that are global OR match this specific employee's department
-      const relevantTypes = leaveTypes.filter(lt => !lt.department_id || lt.department_id === u.department_id);
+      // Filter types that explicitly include this employee's department
+      const relevantTypes = leaveTypes.filter(lt => lt.department_ids.includes(u.department_id));
 
       const empBalances = relevantTypes.map(lt => {
         const bal = balanceMap[`${u.id}_${lt.id}`];
@@ -331,6 +355,8 @@ router.get("/employee-balances", ...guard, async (req, res) => {
         user_id: u.id,
         full_name: u.full_name,
         hire_date: u.hire_date,
+        department_id: u.department_id,
+        department_name: u.department_name || 'Unknown Department',
         balances: empBalances
       };
     });

@@ -466,7 +466,11 @@ router.get(
 
       if (req.user.role === "Manager") {
         const [managedDepts] = await pool.query('SELECT department_id FROM manager_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
+
         if (deptIds.length > 0) {
           whereClause += " AND u.department_id IN (?)";
           params.push(deptIds);
@@ -475,12 +479,20 @@ router.get(
         }
       } else if (req.user.role === "HR") {
         const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
-        const deptIds = managedDepts.map(d => d.department_id);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
+
         if (deptIds.length > 0) {
-          whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
+          if (req.query.department_id) {
+            whereClause += " AND u.department_id IN (?)";
+          } else {
+            whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
+          }
           params.push(deptIds);
         } else {
-          whereClause += " AND u.department_id IS NULL";
+          whereClause += " AND 1 = 0";
         }
       }
 
@@ -515,19 +527,21 @@ router.get(
       const params = [currentYear];
 
       if (req.user.role === "HR") {
-        const selectedDept = req.query.department_id;
-        if (selectedDept && selectedDept !== "all") {
-          whereClause += " AND u.department_id = ?";
-          params.push(selectedDept);
-        } else {
-          const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
-          const deptIds = managedDepts.map(d => d.department_id);
-          if (deptIds.length > 0) {
-            whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
-            params.push(deptIds);
+        const [managedDepts] = await pool.query('SELECT department_id FROM hr_departments WHERE user_id = ?', [req.user.id]);
+        let deptIds = managedDepts.map(d => String(d.department_id));
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
+
+        if (deptIds.length > 0) {
+          if (req.query.department_id) {
+            whereClause += " AND u.department_id IN (?)";
           } else {
-            whereClause += " AND u.department_id IS NULL";
+            whereClause += " AND (u.department_id IN (?) OR u.department_id IS NULL)";
           }
+          params.push(deptIds);
+        } else {
+          whereClause += " AND 1=0";
         }
       }
 
@@ -551,7 +565,7 @@ router.get(
              CASE 
                WHEN lt.is_active = 1 
                     AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
-                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+                    AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = lt.id AND ltd.department_id = u.department_id)
                THEN lb.total_days 
                ELSE 0 
              END
@@ -560,7 +574,7 @@ router.get(
              CASE 
                WHEN lt.is_active = 1 
                     AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
-                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+                    AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = lt.id AND ltd.department_id = u.department_id)
                THEN lb.used_days 
                ELSE 0 
              END
@@ -569,7 +583,7 @@ router.get(
              CASE 
                WHEN lt.is_active = 1 
                     AND TIMESTAMPDIFF(MONTH, u.hire_date, NOW()) >= COALESCE(lt.min_service_months, 0)
-                    AND (lt.department_id IS NULL OR lt.department_id = u.department_id)
+                    AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = lt.id AND ltd.department_id = u.department_id)
                THEN lb.remaining_days 
                ELSE 0 
              END

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Calendar, Users, CalendarDays, CheckSquare, Building2 } from "lucide-react"
+import { Calendar, Users, CalendarDays, CheckSquare } from "lucide-react"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 
 function formatToday() {
   return new Date().toLocaleDateString("en-US", {
@@ -42,16 +43,7 @@ export default function Dashboard({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-  const { user } = useAuth()
-  const [selectedDept, setSelectedDept] = useState("all")
-  
-  const managedDepts = useMemo(() => {
-    if (!user?.managed_department_ids || !user?.managed_departments) return []
-    return user.managed_department_ids.map((id, i) => ({
-      id,
-      name: user.managed_departments[i]
-    }))
-  }, [user])
+  const { selectedDepartment } = useDepartment()
 
   const [showAllEmployees, setShowAllEmployees] = useState(false)
   const [stats, setStats] = useState({
@@ -70,10 +62,17 @@ export default function Dashboard({ onNavigate }) {
         setLoading(true)
         setError("")
 
-        const query = selectedDept === "all" ? "" : `?department_id=${selectedDept}`;
+        let dashUrl = "/reports/dashboard"
+        let monthlyUrl = "/reports/monthly"
+
+        if (selectedDepartment) {
+          dashUrl += `?department_id=${selectedDepartment}`
+          monthlyUrl += `?department_id=${selectedDepartment}`
+        }
+
         const [dashRes, monthlyRes] = await Promise.all([
-          api.get(`/reports/dashboard${query}`),
-          api.get(`/reports/monthly${query}`)
+          api.get(dashUrl),
+          api.get(monthlyUrl)
         ])
 
         setStats({
@@ -102,7 +101,7 @@ export default function Dashboard({ onNavigate }) {
     }
 
     loadDashboard()
-  }, [selectedDept])
+  }, [selectedDepartment])
 
   const displayedEmployees = useMemo(() => {
     return showAllEmployees ? employees : employees.slice(0, 3)
@@ -124,35 +123,6 @@ export default function Dashboard({ onNavigate }) {
             <p className="text-[#59646b] text-[18px] font-medium tracking-wide">
               Your hub for high-level company pulse.
             </p>
-            {managedDepts.length > 0 && (
-              <div className="flex flex-wrap gap-3 mt-4">
-                <button
-                  onClick={() => setSelectedDept("all")}
-                  className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
-                    selectedDept === "all"
-                      ? "bg-[#4c6367] text-white"
-                      : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
-                  }`}
-                >
-                  <Building2 size={16} />
-                  All Departments
-                </button>
-                {managedDepts.map(dept => (
-                  <button
-                    key={dept.id}
-                    onClick={() => setSelectedDept(dept.id)}
-                    className={`px-5 py-2.5 rounded-full text-[14px] font-bold flex items-center gap-2 shadow-sm whitespace-nowrap transition-colors ${
-                      selectedDept === dept.id
-                        ? "bg-[#4c6367] text-white"
-                        : "bg-white text-[#4c6367] border border-[#e2e8f0] hover:bg-[#f8fafc]"
-                    }`}
-                  >
-                    <Building2 size={16} />
-                    {dept.name}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-2 bg-[#d1ebdf] text-[#4b6b60] px-5 py-3 rounded-[20px] shadow-sm font-bold mt-2">
             <Calendar size={20} className="text-[#4b6b60]" />
@@ -214,8 +184,8 @@ export default function Dashboard({ onNavigate }) {
                   const theme = getStatusTheme(emp.status)
 
                   return (
-                    <div 
-                      key={emp.id} 
+                    <div
+                      key={emp.id}
                       onClick={() => onNavigate(`employee/${emp.id}`)}
                       className="flex items-center justify-between p-4 bg-[#f4f7f9] rounded-[24px] cursor-pointer hover:bg-[#eaf1f5] transition-colors"
                     >
