@@ -14,47 +14,39 @@ const LT_SELECT = `
 // GET / — Get all active leave types (all logged-in users)
 router.get("/", verifyToken, async (req, res) => {
   try {
-    let query = `SELECT ${LT_SELECT} FROM leave_types WHERE is_active = 1`;
+    // Only return department-scoped leave types (no global)
+    let query = `SELECT ${LT_SELECT} FROM leave_types
+      WHERE is_active = 1
+      AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)`;
     let params = [];
 
-    // Filter based on role and department scope
     if (req.user.role === "Super Admin") {
-      // Super Admin sees everything
+      // Super Admin sees all department-scoped types
     } else if (req.user.role === "HR") {
       const [hrDepts] = await pool.query(
         "SELECT department_id FROM hr_departments WHERE user_id = ?",
         [req.user.id]
       );
       const deptIds = hrDepts.map((d) => d.department_id);
-
       if (deptIds.length > 0) {
-        query += ` AND (
-          NOT EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)
-          OR
-          EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id IN (?))
-        )`;
+        query += ` AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id IN (?))`;
         params.push(deptIds);
       } else {
-        query += " AND NOT EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)";
+        query += " AND 1=0"; // No departments assigned — show nothing
       }
     } else {
       const userDeptId = req.user.department_id;
       if (userDeptId) {
-        query += ` AND (
-          NOT EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)
-          OR
-          EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id = ?)
-        )`;
+        query += ` AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id = ?)`;
         params.push(userDeptId);
       } else {
-        query += " AND NOT EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)";
+        query += " AND 1=0";
       }
     }
 
     query += " ORDER BY name ASC";
     const [rows] = await pool.query(query, params);
 
-    // Fetch department_ids for each leave type
     for (const row of rows) {
       const [ltdRows] = await pool.query(
         "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
@@ -94,13 +86,13 @@ router.post(
     }
 
     try {
-      // Scoping Permission Check
+      // All roles must specify at least one department (no global leave types)
+      if (!department_ids || !Array.isArray(department_ids) || department_ids.length === 0) {
+        return res.status(400).json({ message: "Please select at least one department for this leave type." });
+      }
+
+      // HR: verify they manage all selected departments
       if (req.user.role === "HR") {
-        if (!department_ids || !Array.isArray(department_ids) || department_ids.length === 0) {
-          return res.status(403).json({
-            message: "HR can only create department-scoped leave types (multi-department support enabled).",
-          });
-        }
         const [managedDepts] = await pool.query(
           "SELECT department_id FROM hr_departments WHERE user_id = ?",
           [req.user.id]
@@ -428,6 +420,98 @@ router.put(
       res.status(500).json({ message: "Internal server error." });
     }
   },
+);
+
+// GET /all — Get ALL leave types (active + inactive) for HR management page
+router.get(
+  "/all",
+  verifyToken,
+  requireRole("Super Admin", "HR"),
+  async (req, res) => {
+    try {
+      // Only show department-scoped leave types (no global)
+      let query = `SELECT ${LT_SELECT} FROM leave_types
+        WHERE EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id)`;
+      let params = [];
+
+      if (req.user.role === "HR") {
+        const [hrDepts] = await pool.query(
+          "SELECT department_id FROM hr_departments WHERE user_id = ?",
+          [req.user.id]
+        );
+        const deptIds = hrDepts.map((d) => d.department_id);
+
+        if (deptIds.length > 0) {
+          query += ` AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id IN (?))`;
+          params.push(deptIds);
+        } else {
+          query += " AND 1=0"; // No departments assigned
+        }
+      }
+      // Super Admin sees all department-scoped types
+
+      query += " ORDER BY is_active DESC, name ASC";
+      const [rows] = await pool.query(query, params);
+
+      for (const row of rows) {
+        const [ltdRows] = await pool.query(
+          "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
+          [row.id]
+        );
+        row.department_ids = ltdRows.map((r) => r.department_id);
+      }
+
+      res.json({ leaveTypes: rows });
+    } catch (err) {
+      console.error("Get all leave types error:", err);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  }
+);
+
+// PATCH /:id/toggle-active — Toggle is_active between 0 and 1 (HR or Super Admin)
+router.patch(
+  "/:id/toggle-active",
+  verifyToken,
+  requireRole("Super Admin", "HR"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const [existing] = await pool.query(
+        "SELECT id, is_active FROM leave_types WHERE id = ?",
+        [id]
+      );
+
+      if (existing.length === 0) {
+        return res.status(404).json({ message: "Leave type not found." });
+      }
+
+      const lt = existing[0];
+
+      const newActive = lt.is_active === 1 ? 0 : 1;
+      await pool.query("UPDATE leave_types SET is_active = ? WHERE id = ?", [newActive, id]);
+
+      const [updated] = await pool.query(
+        `SELECT ${LT_SELECT} FROM leave_types WHERE id = ?`,
+        [id]
+      );
+      const updatedLT = updated[0];
+      const [ltdRows] = await pool.query(
+        "SELECT department_id FROM leave_type_departments WHERE leave_type_id = ?",
+        [id]
+      );
+      updatedLT.department_ids = ltdRows.map((r) => r.department_id);
+
+      res.json({
+        message: newActive === 1 ? "Leave type activated." : "Leave type deactivated.",
+        leaveType: updatedLT,
+      });
+    } catch (err) {
+      console.error("Toggle active error:", err);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  }
 );
 
 // DELETE /:id — Soft-delete by setting is_active = 0 (HR or Super Admin)

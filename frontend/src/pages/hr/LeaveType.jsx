@@ -10,11 +10,11 @@ import {
   PartyPopper,
   MoreHorizontal,
   Edit2,
-  Trash2,
   Plus,
   Calendar,
   Building2,
-  Globe
+  PowerOff,
+  Power
 } from 'lucide-react'
 import Header from '../../components/Header'
 import api from '../../services/api'
@@ -23,7 +23,6 @@ import api from '../../services/api'
 export default function LeaveType({ onNavigate }) {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [deleteId, setDeleteId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const [leaveTypes, setLeaveTypes] = useState([])
@@ -112,7 +111,7 @@ export default function LeaveType({ onNavigate }) {
 
   const fetchLeaveTypes = async () => {
     try {
-      const res = await api.get('/leave-types')
+      const res = await api.get('/leave-types/all')
       const types = res.data.leaveTypes || []
       const formatted = types.map(t => ({
         id: t.id,
@@ -125,7 +124,8 @@ export default function LeaveType({ onNavigate }) {
         reqManager: t.requires_manager_approval !== 0,
         carryover: !!t.carryover,
         service: t.min_service_months || 0,
-        department_ids: t.department_ids || []
+        department_ids: t.department_ids || [],
+        isActive: t.is_active !== 0
       }))
       setLeaveTypes(formatted)
     } catch (err) {
@@ -158,19 +158,17 @@ export default function LeaveType({ onNavigate }) {
     }
   }
 
-  const handleDelete = (id) => {
-    setDeleteId(id)
-  }
-
-  const confirmDelete = async () => {
-    if (deleteId) {
-      try {
-        await api.delete(`/leave-types/${deleteId}`)
-        setLeaveTypes(leaveTypes.filter(leave => leave.id !== deleteId))
-        setDeleteId(null)
-      } catch (err) {
-        alert(err.response?.data?.message || 'Failed to delete leave type')
-      }
+  const handleToggleActive = async (leave) => {
+    try {
+      const res = await api.patch(`/leave-types/${leave.id}/toggle-active`)
+      const updated = res.data.leaveType
+      setLeaveTypes(leaveTypes.map(lt =>
+        lt.id === leave.id
+          ? { ...lt, isActive: updated.is_active !== 0 }
+          : lt
+      ))
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to toggle status')
     }
   }
 
@@ -226,7 +224,8 @@ export default function LeaveType({ onNavigate }) {
             reqManager: updated.requires_manager_approval !== 0,
             carryover: !!updated.carryover,
             service: updated.min_service_months || 0,
-            department_ids: updated.department_ids || form.department_ids
+            department_ids: updated.department_ids || form.department_ids,
+            isActive: updated.is_active !== 0
           } : leave
         ))
       } else {
@@ -243,7 +242,8 @@ export default function LeaveType({ onNavigate }) {
           reqManager: created.requires_manager_approval !== 0,
           carryover: !!created.carryover,
           service: created.min_service_months || 0,
-          department_ids: created.department_ids || form.department_ids
+          department_ids: created.department_ids || form.department_ids,
+          isActive: created.is_active !== 0
         }])
       }
 
@@ -258,9 +258,82 @@ export default function LeaveType({ onNavigate }) {
   }
 
   const getDeptNames = (ids) => {
-    if (!ids || ids.length === 0) return "Global Policy"
+    if (!ids || ids.length === 0) return "No Department"
     const names = ids.map(id => departments.find(d => d.id === id)?.name).filter(Boolean)
     return names.length > 0 ? names.join(", ") : "Multi-Dept"
+  }
+
+  const activeTypes = leaveTypes.filter(lt => lt.isActive)
+  const inactiveTypes = leaveTypes.filter(lt => !lt.isActive)
+
+  const renderCard = (leave) => {
+    const colors = colorStyles[leave.colorType] || colorStyles.blue
+    const Icon = getIconComponent(leave.iconName)
+    const isInactive = !leave.isActive
+
+    return (
+      <div
+        key={leave.id}
+        className={`rounded-[32px] p-6 flex flex-col shadow-sm min-h-[380px] transition-all ${isInactive ? 'bg-[#e8ecf0] opacity-70' : `${colors.bg}`}`}
+      >
+        <div className="flex justify-between items-start mb-6">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isInactive ? 'bg-white/60' : colors.iconBg}`}>
+            <Icon size={24} className={isInactive ? 'text-[#94a3b8]' : colors.iconColor} />
+          </div>
+          <div className="flex gap-2">
+            {!isInactive && (
+              <button
+                onClick={() => handleEdit(leave)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}
+                title="Edit"
+              >
+                <Edit2 size={14} className={colors.iconColor} />
+              </button>
+            )}
+            <button
+              onClick={() => handleToggleActive(leave)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity ${isInactive ? 'bg-[#d0f5e5]' : colors.btnBg}`}
+              title={isInactive ? 'Reactivate' : 'Deactivate'}
+            >
+              {isInactive
+                ? <Power size={14} className="text-[#0a5c3e]" />
+                : <PowerOff size={14} className={colors.iconColor} />
+              }
+            </button>
+          </div>
+        </div>
+
+        <h3 className={`text-[24px] font-fredoka font-bold mb-1 ${isInactive ? 'text-[#94a3b8]' : colors.title}`}>
+          {leave.name}
+        </h3>
+
+        <div className="flex items-center gap-1 mb-4">
+          <Building2 size={12} className={isInactive ? 'text-[#94a3b8]' : colors.iconColor} />
+          <span className={`text-[11px] font-bold uppercase tracking-wider ${isInactive ? 'text-[#94a3b8]' : colors.iconColor}`}>
+            {getDeptNames(leave.department_ids)}
+          </span>
+        </div>
+
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold w-fit mb-4 ${isInactive ? 'bg-white/60 text-[#94a3b8]' : `${colors.btnBg} ${colors.iconColor}`}`}>
+          <Calendar size={14} /> {leave.quota} Days Annual Quota
+        </div>
+
+        <p className={`text-[13px] leading-relaxed mb-8 flex-grow font-medium ${isInactive ? 'text-[#94a3b8]' : colors.desc}`}>
+          {leave.description}
+        </p>
+
+        <div className={`pt-4 border-t ${isInactive ? 'border-[#cbd5e1]' : colors.footer} flex justify-between items-center`}>
+          <span className={`text-[12px] font-bold tracking-widest uppercase ${isInactive ? 'text-[#94a3b8]' : colors.footerText}`}>
+            {isInactive ? 'Inactive Policy' : 'Active Policy'}
+          </span>
+          {isInactive && (
+            <span className="text-[11px] font-bold text-[#64748b] bg-white/60 px-2.5 py-1 rounded-full">
+              Inactive
+            </span>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -299,69 +372,56 @@ export default function LeaveType({ onNavigate }) {
             {loading ? (
               <div className="flex justify-center py-20 text-[#64748b] font-bold">Loading leave types...</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Existing Leave Types */}
-                {leaveTypes.map((leave) => {
-                  const colors = colorStyles[leave.colorType] || colorStyles.blue
-                  const Icon = getIconComponent(leave.iconName)
-                  return (
-                    <div key={leave.id} className={`rounded-[32px] p-6 flex flex-col ${colors.bg} shadow-sm min-h-[380px]`}>
-                      <div className="flex justify-between items-start mb-6">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colors.iconBg}`}>
-                          <Icon size={24} className={colors.iconColor} />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEdit(leave)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
-                            <Edit2 size={14} className={colors.iconColor} />
-                          </button>
-                          <button onClick={() => handleDelete(leave.id)} className={`w-8 h-8 rounded-full flex items-center justify-center ${colors.btnBg} hover:opacity-80 transition-opacity`}>
-                            <Trash2 size={14} className={colors.iconColor} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <h3 className={`text-[24px] font-fredoka font-bold mb-1 ${colors.title}`}>{leave.name}</h3>
-
-                      <div className="flex items-center gap-1 mb-4">
-                        {leave.department_ids && leave.department_ids.length > 0 ? <Building2 size={12} className={colors.iconColor} /> : <Globe size={12} className={colors.iconColor} />}
-                        <span className={`text-[11px] font-bold uppercase tracking-wider ${colors.iconColor}`}>
-                          {getDeptNames(leave.department_ids)}
-                        </span>
-                      </div>
-
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${colors.btnBg} text-[12px] font-bold ${colors.iconColor} w-fit mb-4`}>
-                        <Calendar size={14} /> {leave.quota} Days Annual Quota
-                      </div>
-
-                      <p className={`text-[13px] leading-relaxed mb-8 flex-grow ${colors.desc} font-medium`}>
-                        {leave.description}
-                      </p>
-
-                      <div className={`pt-4 border-t ${colors.footer} flex justify-between items-center cursor-pointer group`}>
-                        <span className={`text-[12px] font-bold tracking-widest uppercase ${colors.footerText}`}>Active Policy</span>
-                        <span className={`text-[16px] ${colors.footerText} group-hover:translate-x-1 transition-transform`}>›</span>
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {/* Add New Card */}
-                <div
-                  onClick={() => {
-                    setIsCreating(true)
-                    if (isHR && departments.length === 1) {
-                      setForm(prev => ({ ...prev, department_ids: [departments[0].id] }))
-                    }
-                  }}
-                  className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white hover:border-[#a0xbsd1] transition-all group"
-                >
-                  <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Plus size={24} className="text-[#64748b]" />
+              <>
+                {/* ── Active Section ── */}
+                <div className="mb-10">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#265345]" />
+                    <h2 className="text-[20px] font-fredoka font-bold text-[#1f3747]">Active</h2>
+                    <span className="text-[13px] font-bold text-[#64748b] bg-white px-3 py-0.5 rounded-full">
+                      {activeTypes.length}
+                    </span>
                   </div>
-                  <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
-                  <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {activeTypes.map(leave => renderCard(leave))}
+
+                    {/* Add New Card */}
+                    <div
+                      onClick={() => {
+                        setIsCreating(true)
+                        if (isHR && departments.length === 1) {
+                          setForm(prev => ({ ...prev, department_ids: [departments[0].id] }))
+                        }
+                      }}
+                      className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white hover:border-[#a0xbsd1] transition-all group"
+                    >
+                      <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Plus size={24} className="text-[#64748b]" />
+                      </div>
+                      <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
+                      <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                {/* ── Inactive Section ── */}
+                {inactiveTypes.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6 mt-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#94a3b8]" />
+                      <h2 className="text-[20px] font-fredoka font-bold text-[#94a3b8]">Inactive</h2>
+                      <span className="text-[13px] font-bold text-[#94a3b8] bg-white px-3 py-0.5 rounded-full">
+                        {inactiveTypes.length}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {inactiveTypes.map(leave => renderCard(leave))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
@@ -390,17 +450,6 @@ export default function LeaveType({ onNavigate }) {
                 <div>
                   <label className="block text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-3">Scope (Departments)</label>
                   <div className="flex flex-wrap gap-2.5">
-                    {isSuperAdmin && (
-                      <button
-                        type="button"
-                        className={`!px-5 !py-2.5 rounded-full text-[13px] font-bold transition-all flex items-center gap-2 border-2 ${form.department_ids.length === 0
-                          ? '!bg-[#1f3747] !border-[#1f3747] !text-white shadow-md'
-                          : '!bg-white !border-[#e2e8f0] !text-[#64748b] hover:!border-[#1f3747] hover:!text-[#1f3747]'}`}
-                        onClick={() => setForm({ ...form, department_ids: [] })}
-                      >
-                        <Globe size={14} /> Global Policy
-                      </button>
-                    )}
 
                     {departments.map(d => {
                       const isChecked = form.department_ids.includes(d.id)
@@ -570,38 +619,6 @@ export default function LeaveType({ onNavigate }) {
           </div>
         )}
       </main>
-
-      {/* Delete Confirmation Modal */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f3747]/40 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-[32px] p-8 max-w-sm w-full mx-6 shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-[#ffe2e5] rounded-full flex items-center justify-center mb-6">
-              <Trash2 size={24} className="text-[#f05252]" />
-            </div>
-            <h3 className="text-[24px] font-fredoka font-bold text-[#1f3747] text-center mb-2">Delete Policy?</h3>
-            <p className="text-[#64748b] text-[15px] text-center mb-8 font-medium">
-              This action cannot be undone. Are you sure you want to completely remove this leave type?
-            </p>
-            <div className="flex gap-4 w-full">
-              <button
-                onClick={() => setDeleteId(null)}
-                className="flex-1 !py-3.5 !px-4 !bg-[#e9eff5] hover:bg-[#dce4ec] text-[#4c6367] rounded-full font-bold transition-colors"
-                style={{ fontSize: '15px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 !py-3.5 !px-4 !bg-[#f05252] hover:bg-[#d64545] text-white rounded-full font-bold transition-colors shadow-sm"
-                style={{ fontSize: '15px' }}
-              >
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
