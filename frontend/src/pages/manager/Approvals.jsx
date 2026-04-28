@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 import {
   ChevronLeft, ChevronRight,
   CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, Search
@@ -486,6 +487,7 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
 
 // ─── Approvals Page ───────────────────────────────────────────────────────────
 export default function Approvals({ onNavigate }) {
+  const { selectedDepartment } = useDepartment()
   const [allRequests, setAllRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
@@ -493,9 +495,16 @@ export default function Approvals({ onNavigate }) {
 
   // Load only pending + acknowledged (already approved/rejected go to History)
   useEffect(() => {
+    let pendingUrl = "/leave-requests/team?status=pending"
+    let ackUrl = "/leave-requests/team?status=acknowledged"
+    if (selectedDepartment) {
+      pendingUrl += `&department_id=${selectedDepartment}`
+      ackUrl += `&department_id=${selectedDepartment}`
+    }
+
     Promise.all([
-      api.get("/leave-requests/team?status=pending").catch(() => ({ data: { leaveRequests: [] } })),
-      api.get("/leave-requests/team?status=acknowledged").catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(pendingUrl).catch(() => ({ data: { leaveRequests: [] } })),
+      api.get(ackUrl).catch(() => ({ data: { leaveRequests: [] } })),
     ]).then(([pRes, aRes]) => {
       const combined = sortRequests([
         ...(pRes.data.leaveRequests || []),
@@ -503,7 +512,7 @@ export default function Approvals({ onNavigate }) {
       ])
       setAllRequests(combined)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [selectedDepartment])
 
   function handleApproved(id) {
     setAllRequests(prev => prev.filter(r => r.id !== id))

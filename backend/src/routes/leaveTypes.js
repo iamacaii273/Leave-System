@@ -27,7 +27,11 @@ router.get("/", verifyToken, async (req, res) => {
         "SELECT department_id FROM hr_departments WHERE user_id = ?",
         [req.user.id]
       );
-      const deptIds = hrDepts.map((d) => d.department_id);
+      let deptIds = hrDepts.map((d) => String(d.department_id));
+      if (req.query.department_id) {
+        deptIds = deptIds.filter(id => id === String(req.query.department_id));
+      }
+
       if (deptIds.length > 0) {
         query += ` AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id IN (?))`;
         params.push(deptIds);
@@ -439,7 +443,11 @@ router.get(
           "SELECT department_id FROM hr_departments WHERE user_id = ?",
           [req.user.id]
         );
-        const deptIds = hrDepts.map((d) => d.department_id);
+        let deptIds = hrDepts.map((d) => String(d.department_id));
+
+        if (req.query.department_id) {
+          deptIds = deptIds.filter(id => id === String(req.query.department_id));
+        }
 
         if (deptIds.length > 0) {
           query += ` AND EXISTS (SELECT 1 FROM leave_type_departments ltd WHERE ltd.leave_type_id = id AND ltd.department_id IN (?))`;

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 
 // Utilities
 function getInitials(name = "") {
@@ -114,6 +115,8 @@ export default function Reports({ onNavigate }) {
   const balancesPerPage = 4
   const pickerRef = useRef(null)
 
+  const { selectedDepartment } = useDepartment()
+
   const [isLoading, setIsLoading] = useState(true)
   const [summaryData, setSummaryData] = useState([])
   const [balancesData, setBalancesData] = useState([])
@@ -148,10 +151,15 @@ export default function Reports({ onNavigate }) {
     async function loadData() {
       setIsLoading(true);
       try {
+        let qs = ""
+        if (selectedDepartment) {
+          qs = `?department_id=${selectedDepartment}`
+        }
+
         const [sumRes, balRes, histRes] = await Promise.all([
-          api.get("/reports/leave-summary"),
-          api.get("/reports/employee-balances"),
-          api.get("/leave-requests") // HR gets all requests
+          api.get(`/reports/leave-summary${qs}`),
+          api.get(`/reports/employee-balances${qs}`),
+          api.get(`/leave-requests${qs}`)
         ]);
 
         const loadedSummary = sumRes.data.summary.map(s => ({
@@ -161,12 +169,12 @@ export default function Reports({ onNavigate }) {
         }));
 
         // Fetch leave types to build dynamic columns
-        const ltRes = await api.get("/leave-types");
+        const ltRes = await api.get(`/leave-types${qs}`);
         const leaveTypes = ltRes.data.leaveTypes || [];
         const ltNames = leaveTypes.map(lt => lt.name); // ordered list of column names
         setLeaveTypeColumns(ltNames);
 
-        const loadedBalances = {};
+        const loadedBalances = [];
         for (const emp of balRes.data.employees) {
           // Build a map: leave_type_name -> { display, isEligible }
           const balMap = {};
@@ -178,14 +186,18 @@ export default function Reports({ onNavigate }) {
               isEligible: bal.is_eligible
             };
           }
-          loadedBalances[emp.user_id] = {
+          // Build ordered column list from this employee's own balances
+          const deptColumns = emp.balances.map(b => b.leave_type_name);
+          loadedBalances.push({
             id: emp.user_id,
             name: emp.full_name,
             initial: getInitials(emp.full_name),
             bg: getUserColor(emp.user_id),
-            specialBadge: null,
-            balMap, // all balances keyed by leave type name
-          };
+            department_id: emp.department_id,
+            department_name: emp.department_name,
+            deptColumns,
+            balMap,
+          });
         }
 
         const loadedHistory = histRes.data.leaveRequests.map(r => ({
@@ -205,7 +217,7 @@ export default function Reports({ onNavigate }) {
         }));
 
         setSummaryData(loadedSummary);
-        setBalancesData(Object.values(loadedBalances));
+        setBalancesData(loadedBalances);
         setHistoryData(loadedHistory);
       } catch (err) {
         console.error("Failed to load reports data", err);
@@ -214,7 +226,7 @@ export default function Reports({ onNavigate }) {
       }
     }
     loadData();
-  }, []);
+  }, [selectedDepartment]);
 
   const tabFilters = ["All", "Approved", "Pending", "Rejected", "Acknowledged", "Cancelled"]
 
@@ -335,98 +347,98 @@ export default function Reports({ onNavigate }) {
 
         {/* Card 2: Individual Leave Balances */}
         <div className="bg-white rounded-[24px] shadow-sm overflow-hidden flex flex-col">
-          <div className="p-8 pb-6 bg-white border-b border-transparent">
+          <div className="p-8 pb-6 bg-white border-b border-[#f1f5f9]">
             <h3 className="font-bold text-[18px] font-fredoka text-[#1f3747]">Individual Leave Balances</h3>
           </div>
 
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#e2e8f0]">
-                  <th className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase">Employee Name</th>
-                  {leaveTypeColumns.map(name => (
-                    <th key={name} className="py-4 px-8 text-[12px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">
-                      {name}<br />(Used/Total)
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedBalances.map((row, idx) => {
-                  return (
-                    <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
-                      <td className="py-5 px-8">
-                        <div className="flex items-center gap-4">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[#1f3747] text-[12px] font-fredoka shrink-0" style={{ backgroundColor: row.bg }}>
-                            {row.initial}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[14px] text-[#3f4a51]">{row.name}</span>
-                            {row.specialBadge && (
-                              <span className="font-bold text-red-600 mt-0.5 tracking-widest uppercase opacity-90" style={{ fontSize: "9px" }}>
-                                {row.specialBadge}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      {leaveTypeColumns.map(name => {
-                        const balObj = row.balMap?.[name];
-                        const isEligible = balObj ? balObj.isEligible : true; // default true for types not in balance map if any
-                        const val = isEligible ? (balObj?.display || "0 / 0") : "0 / 0";
+          {isLoading ? (
+            <div className="py-12 text-center text-[#94a3b8] text-[14px] font-bold">Loading...</div>
+          ) : balancesData.length === 0 ? (
+            <div className="py-12 text-center text-[#94a3b8] text-[14px] font-bold">No employee data available.</div>
+          ) : (() => {
+            // Group employees by department
+            const deptGroups = {};
+            for (const emp of balancesData) {
+              const key = emp.department_id || 'unknown';
+              if (!deptGroups[key]) {
+                deptGroups[key] = {
+                  name: emp.department_name || 'Unknown Department',
+                  // Derive columns from the first employee's deptColumns (all same per dept)
+                  columns: emp.deptColumns || [],
+                  employees: []
+                };
+              }
+              // Merge columns in case different employees in same dept have different types
+              for (const col of (emp.deptColumns || [])) {
+                if (!deptGroups[key].columns.includes(col)) deptGroups[key].columns.push(col);
+              }
+              deptGroups[key].employees.push(emp);
+            }
 
-                        const getQuotaStyle = (quota) => {
-                          if (!isEligible) return "text-red-600 font-bold";
-                          const parts = quota.split(" / ");
-                          if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
-                            if (parts[0].trim() === "0") return "text-red-800 font-bold";
-                            return "text-red-600 font-bold";
-                          }
-                          return "text-[#475569]";
-                        };
-                        return (
-                          <td key={name} className="py-5 px-8">
-                            <span className={`text-[14px] font-medium ${getQuotaStyle(val)}`}>{val}</span>
+            return Object.values(deptGroups).map((dept, dIdx) => (
+              <div key={dIdx} className={dIdx > 0 ? 'border-t border-[#f1f5f9]' : ''}>
+                {/* Department header */}
+                <div className="px-8 py-4 bg-[#f8fafc] flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#4c6367]" />
+                  <span className="text-[13px] font-bold text-[#4c6367] tracking-wider uppercase">{dept.name}</span>
+                  <span className="text-[12px] text-[#94a3b8] font-bold ml-1">({dept.employees.length})</span>
+                </div>
+
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#e2e8f0]">
+                        <th className="py-3 px-8 text-[11px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase">Employee</th>
+                        {dept.columns.map(colName => (
+                          <th key={colName} className="py-3 px-8 text-[11px] font-bold font-fredoka text-[#64748b] tracking-widest uppercase leading-snug">
+                            {colName}<br />(Used/Total)
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dept.employees.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
+                          <td className="py-4 px-8">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[#1f3747] text-[12px] font-fredoka shrink-0" style={{ backgroundColor: row.bg }}>
+                                {row.initial}
+                              </div>
+                              <span
+                                className="font-bold text-[14px] text-[#3f4a51] cursor-pointer hover:text-[#006dae] hover:underline transition-colors"
+                                onClick={() => onNavigate && onNavigate(`employee/${row.id}`)}
+                              >{row.name}</span>
+                            </div>
                           </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          {dept.columns.map(name => {
+                            const balObj = row.balMap?.[name];
+                            const isEligible = balObj ? balObj.isEligible : false;
+                            const val = !balObj ? "—" : isEligible ? balObj.display : "0 / 0";
 
-          <div className="flex items-center justify-between pt-4 mt-2 px-8 pb-4">
-            <p className="text-[13px] text-[#94a3b8] font-bold">
-              Showing {balStartItem}-{balEndItem} of {balancesData.length} employees
-            </p>
-            <div className="flex items-center gap-2 text-[#475569] font-bold text-[13px]">
-              <button
-                onClick={() => setBalancesPage(p => Math.max(1, p - 1))}
-                disabled={balancesPage === 1}
-                className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors ${balancesPage === 1 ? 'text-[#d1d5db] cursor-not-allowed' : 'text-[#94a3b8]'}`}
-              >&lt;</button>
-              {Array.from({ length: balTotalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setBalancesPage(page)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${page === balancesPage
-                    ? "text-white"
-                    : "hover:bg-gray-100 text-[#94a3b8]"
-                    }`}
-                  style={page === balancesPage ? { backgroundColor: '#323940' } : {}}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => setBalancesPage(p => Math.min(balTotalPages, p + 1))}
-                disabled={balancesPage === balTotalPages}
-                className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors ${balancesPage === balTotalPages ? 'text-[#d1d5db] cursor-not-allowed' : 'text-[#64748b]'}`}
-              >&gt;</button>
-            </div>
-          </div>
+                            const getQuotaStyle = () => {
+                              if (val === "—") return "text-[#94a3b8]";
+                              if (!isEligible) return "text-red-500 font-bold";
+                              const parts = val.split(" / ");
+                              if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
+                                return parts[0].trim() === "0" ? "text-red-800 font-bold" : "text-red-600 font-bold";
+                              }
+                              return "text-[#475569]";
+                            };
+
+                            return (
+                              <td key={name} className="py-4 px-8">
+                                <span className={`text-[14px] font-medium ${getQuotaStyle()}`}>{val}</span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ));
+          })()}
         </div>
 
         {/* Card 3: Full Leave History */}
@@ -662,7 +674,11 @@ export default function Reports({ onNavigate }) {
                     }
 
                     return (
-                      <tr key={hist.id} className="hover:bg-[#f9fafb] transition-colors rounded-[24px]">
+                      <tr
+                        key={hist.id}
+                        className="hover:bg-[#f4f7f9] transition-colors rounded-[24px] cursor-pointer"
+                        onClick={() => onNavigate && onNavigate(`requests/${hist.id}`)}
+                      >
                         <td className="py-3 px-4 rounded-l-[24px]">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[#1f3747] text-[11px] font-fredoka shrink-0" style={{ backgroundColor: hist.bg }}>

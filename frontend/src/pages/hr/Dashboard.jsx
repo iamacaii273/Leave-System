@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Calendar, Users, CalendarDays, CheckSquare } from "lucide-react"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 
 function formatToday() {
   return new Date().toLocaleDateString("en-US", {
@@ -42,7 +43,7 @@ export default function Dashboard({ onNavigate }) {
     { id: "leave-type", label: "Leave Type" }
   ]
 
-
+  const { selectedDepartment } = useDepartment()
 
   const [showAllEmployees, setShowAllEmployees] = useState(false)
   const [stats, setStats] = useState({
@@ -61,9 +62,17 @@ export default function Dashboard({ onNavigate }) {
         setLoading(true)
         setError("")
 
+        let dashUrl = "/reports/dashboard"
+        let monthlyUrl = "/reports/monthly"
+
+        if (selectedDepartment) {
+          dashUrl += `?department_id=${selectedDepartment}`
+          monthlyUrl += `?department_id=${selectedDepartment}`
+        }
+
         const [dashRes, monthlyRes] = await Promise.all([
-          api.get("/reports/dashboard"),
-          api.get("/reports/monthly")
+          api.get(dashUrl),
+          api.get(monthlyUrl)
         ])
 
         setStats({
@@ -92,7 +101,7 @@ export default function Dashboard({ onNavigate }) {
     }
 
     loadDashboard()
-  }, [])
+  }, [selectedDepartment])
 
   const displayedEmployees = useMemo(() => {
     return showAllEmployees ? employees : employees.slice(0, 3)
@@ -175,8 +184,8 @@ export default function Dashboard({ onNavigate }) {
                   const theme = getStatusTheme(emp.status)
 
                   return (
-                    <div 
-                      key={emp.id} 
+                    <div
+                      key={emp.id}
                       onClick={() => onNavigate(`employee/${emp.id}`)}
                       className="flex items-center justify-between p-4 bg-[#f4f7f9] rounded-[24px] cursor-pointer hover:bg-[#eaf1f5] transition-colors"
                     >

@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect, useRef } from "react"
 import api from "../services/api"
+import { useDepartment } from "../contexts/DepartmentContext"
 
 // Nav items per role — single source of truth
 const ROLE_NAV_ITEMS = {
@@ -36,8 +37,12 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const dropdownRef = useRef(null)
 
+  const { selectedDepartment, setSelectedDepartment } = useDepartment()
+
   const navItems = ROLE_NAV_ITEMS[user?.role] || []
   const isSuperAdmin = user?.role === "Super Admin"
+  const isManagerOrHR = ["Manager", "HR"].includes(user?.role)
+  const hasMultipleDepartments = isManagerOrHR && (user?.managed_departments?.length > 1)
 
   const fetchNotifications = async () => {
     if (!user || isSuperAdmin) return
@@ -124,6 +129,30 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Department Filter (Only for HR/Manager with multiple departments) */}
+          {hasMultipleDepartments && (
+            <div className="relative border-r border-gray-200 pr-6 mr-2">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="appearance-none bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#1e3450] text-[13px] font-bold font-fredoka py-2 pl-4 pr-8 rounded-full border-none focus:ring-0 cursor-pointer transition-colors outline-none"
+              >
+                <option value="">All Departments</option>
+                {user.managed_departments.map((deptName, idx) => {
+                  const deptId = user.managed_department_ids[idx];
+                  return (
+                    <option key={deptId} value={deptId}>
+                      {deptName}
+                    </option>
+                  )
+                })}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-10 flex items-center px-2 text-[#64748b]">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+              </div>
+            </div>
+          )}
+
           {/* Bell hidden for Super Admin */}
           {!isSuperAdmin && (
             <div className="relative" ref={dropdownRef}>

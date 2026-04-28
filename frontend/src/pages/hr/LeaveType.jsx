@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import Header from '../../components/Header'
 import api from '../../services/api'
-
+import { useDepartment } from '../../contexts/DepartmentContext'
 
 export default function LeaveType({ onNavigate }) {
   const [isCreating, setIsCreating] = useState(false)
@@ -32,6 +32,8 @@ export default function LeaveType({ onNavigate }) {
   const user = userStr ? JSON.parse(userStr) : null
   const isHR = user?.role === 'HR'
   const isSuperAdmin = user?.role === 'Super Admin'
+
+  const { selectedDepartment } = useDepartment()
 
   // Map abstract colors to Tailwind styles
   const colorStyles = {
@@ -93,7 +95,7 @@ export default function LeaveType({ onNavigate }) {
   useEffect(() => {
     fetchLeaveTypes()
     fetchContextData()
-  }, [])
+  }, [selectedDepartment])
 
   const fetchContextData = async () => {
     try {
@@ -111,7 +113,11 @@ export default function LeaveType({ onNavigate }) {
 
   const fetchLeaveTypes = async () => {
     try {
-      const res = await api.get('/leave-types/all')
+      let url = '/leave-types/all'
+      if (selectedDepartment) {
+        url += `?department_id=${selectedDepartment}`
+      }
+      const res = await api.get(url)
       const types = res.data.leaveTypes || []
       const formatted = types.map(t => ({
         id: t.id,
@@ -373,54 +379,76 @@ export default function LeaveType({ onNavigate }) {
               <div className="flex justify-center py-20 text-[#64748b] font-bold">Loading leave types...</div>
             ) : (
               <>
-                {/* ── Active Section ── */}
-                <div className="mb-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#265345]" />
-                    <h2 className="text-[20px] font-fredoka font-bold text-[#1f3747]">Active</h2>
-                    <span className="text-[13px] font-bold text-[#64748b] bg-white px-3 py-0.5 rounded-full">
-                      {activeTypes.length}
-                    </span>
-                  </div>
+                {(() => {
+                  const deptsToRender = selectedDepartment
+                    ? departments.filter(d => String(d.id) === String(selectedDepartment))
+                    : departments;
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {activeTypes.map(leave => renderCard(leave))}
+                  if (deptsToRender.length === 0) {
+                    return <div className="text-center py-20 text-[#64748b] font-medium">No departments available.</div>;
+                  }
 
-                    {/* Add New Card */}
-                    <div
-                      onClick={() => {
-                        setIsCreating(true)
-                        if (isHR && departments.length === 1) {
-                          setForm(prev => ({ ...prev, department_ids: [departments[0].id] }))
-                        }
-                      }}
-                      className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white hover:border-[#a0xbsd1] transition-all group"
-                    >
-                      <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <Plus size={24} className="text-[#64748b]" />
+                  return deptsToRender.map(dept => {
+                    const deptTypes = leaveTypes.filter(lt => lt.department_ids.includes(dept.id));
+                    const activeDeptTypes = deptTypes.filter(t => t.isActive);
+                    const inactiveDeptTypes = deptTypes.filter(t => !t.isActive);
+
+                    return (
+                      <div key={dept.id} className="mb-14">
+                        <h3 className="text-[24px] font-fredoka font-bold text-[#1f3747] mb-6 border-b-2 border-[#e9eff5] pb-2">
+                          {dept.name}
+                        </h3>
+
+                        {/* ── Active Section ── */}
+                        <div className="mb-10">
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#265345]" />
+                            <h2 className="text-[20px] font-fredoka font-bold text-[#1f3747]">Active</h2>
+                            <span className="text-[13px] font-bold text-[#64748b] bg-white px-3 py-0.5 rounded-full">
+                              {activeDeptTypes.length}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {activeDeptTypes.map(leave => renderCard(leave))}
+
+                            {/* Add New Card */}
+                            <div
+                              onClick={() => {
+                                setIsCreating(true)
+                                setForm(prev => ({ ...prev, department_ids: [dept.id] }))
+                              }}
+                              className="rounded-[32px] border-2 border-dashed border-[#b0b8c1] flex flex-col items-center justify-center min-h-[380px] cursor-pointer hover:bg-white transition-all group"
+                            >
+                              <div className="w-14 h-14 bg-[#e2e8f0] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Plus size={24} className="text-[#64748b]" />
+                              </div>
+                              <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
+                              <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ── Inactive Section ── */}
+                        {inactiveDeptTypes.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-3 mb-6 mt-4">
+                              <div className="w-2.5 h-2.5 rounded-full bg-[#94a3b8]" />
+                              <h2 className="text-[20px] font-fredoka font-bold text-[#94a3b8]">Inactive</h2>
+                              <span className="text-[13px] font-bold text-[#94a3b8] bg-white px-3 py-0.5 rounded-full">
+                                {inactiveDeptTypes.length}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                              {inactiveDeptTypes.map(leave => renderCard(leave))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1">New Leave Type</h3>
-                      <p className="text-[14px] text-[#64748b] font-medium text-center px-6">Configure a custom category for your team.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Inactive Section ── */}
-                {inactiveTypes.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6 mt-4">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#94a3b8]" />
-                      <h2 className="text-[20px] font-fredoka font-bold text-[#94a3b8]">Inactive</h2>
-                      <span className="text-[13px] font-bold text-[#94a3b8] bg-white px-3 py-0.5 rounded-full">
-                        {inactiveTypes.length}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                      {inactiveTypes.map(leave => renderCard(leave))}
-                    </div>
-                  </div>
-                )}
+                    );
+                  });
+                })()}
               </>
             )}
           </>
@@ -505,7 +533,7 @@ export default function LeaveType({ onNavigate }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-2">Minimum Service Required</label>
+                    <label className="block text-[12px] font-bold text-[#4c6367] tracking-wider uppercase mb-2">Min. Service (Months)</label>
                     <input
                       type="number"
                       placeholder="0"

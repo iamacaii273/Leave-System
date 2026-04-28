@@ -3,6 +3,7 @@ import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
+import { useDepartment } from "../../contexts/DepartmentContext"
 
 function getInitials(name = "") {
   return name
@@ -47,7 +48,7 @@ export default function EmployeeList({ onNavigate }) {
   const [error, setError] = useState("")
   const itemsPerPage = 5
 
-
+  const { selectedDepartment } = useDepartment()
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -55,7 +56,12 @@ export default function EmployeeList({ onNavigate }) {
         setLoading(true)
         setError("")
 
-        const { data } = await api.get("/users/employees-summary")
+        let url = "/users/employees-summary"
+        if (selectedDepartment) {
+          url += `?department_id=${selectedDepartment}`
+        }
+
+        const { data } = await api.get(url)
         setEmployees(data?.users || [])
       } catch (err) {
         console.error("HR employee list error:", err)
@@ -66,7 +72,7 @@ export default function EmployeeList({ onNavigate }) {
     }
 
     loadEmployees()
-  }, [])
+  }, [selectedDepartment])
 
   const filteredEmployees = useMemo(() => {
     const source = employees.map((emp) => ({
@@ -231,8 +237,8 @@ export default function EmployeeList({ onNavigate }) {
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${page === currentPage
-                          ? "text-[#2c4c48] font-bold"
-                          : "hover:bg-gray-50"
+                        ? "text-[#2c4c48] font-bold"
+                        : "hover:bg-gray-50"
                         }`}
                       style={page === currentPage ? { backgroundColor: "#c2e4e1" } : {}}
                     >
