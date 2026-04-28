@@ -62,6 +62,24 @@ router.post("/login", async (req, res) => {
       `User logged in from email: ${user.email}`,
     );
 
+    const isHR = user.role_name === "HR";
+    const isManager = user.role_name === "Manager";
+    let managed_department_ids = [];
+    let managed_departments = [];
+
+    if (isHR || isManager) {
+      const table = isHR ? "hr_departments" : "manager_departments";
+      const [deptRows] = await pool.query(
+        `SELECT d.id, d.name 
+         FROM ${table} x 
+         JOIN departments d ON x.department_id = d.id 
+         WHERE x.user_id = ?`,
+        [user.id]
+      );
+      managed_department_ids = deptRows.map((r) => r.id);
+      managed_departments = deptRows.map((r) => r.name);
+    }
+
     res.json({
       token,
       user: {
@@ -75,6 +93,8 @@ router.post("/login", async (req, res) => {
         department: user.department,
         role_id: user.role_id,
         role: user.role_name,
+        managed_department_ids,
+        managed_departments
       },
     });
   } catch (err) {
