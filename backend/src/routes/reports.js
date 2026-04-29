@@ -217,7 +217,7 @@ router.get("/leave-summary", ...guard, async (req, res) => {
        ) lr ON lr.leave_type_id = lt.id
        WHERE lt.is_active = 1
          ${req.user.role === "HR" ? typeScopeSql : ""}
-       GROUP BY lt.name
+       GROUP BY lt.name, lt.min_service_months
        ORDER BY lt.name ASC`,
       params
     );
