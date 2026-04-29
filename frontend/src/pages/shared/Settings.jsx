@@ -396,6 +396,7 @@ export default function Settings({ onNavigate, HeaderComponent }) {
               </form>
             )}
 
+            {activeTab === "security" && (
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 setSuccessMsg("");
@@ -459,6 +460,7 @@ export default function Settings({ onNavigate, HeaderComponent }) {
                   </button>
                 </div>
               </form>
+            )}
 
             {activeTab === "notifications" && (
               <div className="bg-white rounded-[32px] p-8 shadow-sm">
