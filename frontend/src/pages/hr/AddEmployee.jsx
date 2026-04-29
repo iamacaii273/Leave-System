@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { UserPlus, Briefcase, Lock, Save, ChevronDown, CheckCircle, Building2, Globe } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
+import api from "../../services/api"
 
 export default function AddEmployee({ onNavigate }) {
   const navigate = useNavigate()
@@ -42,20 +43,17 @@ export default function AddEmployee({ onNavigate }) {
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const token = localStorage.getItem('token')
-        const headers = { 'Authorization': `Bearer ${token}` }
-
         const [rolesRes, posRes, deptRes] = await Promise.all([
-          fetch('http://localhost:5000/api/metadata/roles', { headers }).then(r => r.json()),
-          fetch('http://localhost:5000/api/metadata/positions', { headers }).then(r => r.json()),
-          fetch('http://localhost:5000/api/departments/hr-assigned', { headers }).then(r => r.json())
+          api.get('/metadata/roles'),
+          api.get('/metadata/positions'),
+          api.get('/departments/hr-assigned')
         ])
 
-        const allowedRoles = (rolesRes.roles || []).filter(r => r.name === 'Employee' || r.name === 'Manager')
+        const allowedRoles = (rolesRes.data.roles || []).filter(r => r.name === 'Employee' || r.name === 'Manager')
         setRoles(allowedRoles)
-        setPositions(posRes.positions || [])
+        setPositions(posRes.data.positions || [])
 
-        const depts = deptRes.departments || []
+        const depts = deptRes.data.departments || []
         setHrDepartments(depts)
         if (depts.length > 0) {
           updateField('department_id', depts[0].id)
@@ -110,30 +108,16 @@ export default function AddEmployee({ onNavigate }) {
     setError('')
 
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          full_name: form.fullName,
-          email: form.email,
-          phone: `${form.countryCode}${form.phoneNumberOnly}`,
-          hire_date: form.hire_date,
-          password: form.password,
-          role_id: form.role_id,
-          position_id: form.position_id,
-          department_id: form.department_id
-        })
+      await api.post('/users', {
+        full_name: form.fullName,
+        email: form.email,
+        phone: `${form.countryCode}${form.phoneNumberOnly}`,
+        hire_date: form.hire_date,
+        password: form.password,
+        role_id: form.role_id,
+        position_id: form.position_id,
+        department_id: form.department_id
       })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        setError(errorData.message || 'Failed to save')
-        return
-      }
 
       setShowSuccess(true)
       setTimeout(() => {
@@ -142,7 +126,7 @@ export default function AddEmployee({ onNavigate }) {
       }, 2000)
     } catch (err) {
       console.error(err)
-      setError('An error occurred while saving.')
+      setError(err.response?.data?.message || 'An error occurred while saving.')
     }
   }
 

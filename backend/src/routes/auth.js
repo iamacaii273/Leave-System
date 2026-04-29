@@ -140,7 +140,10 @@ router.post("/forgot-password", async (req, res) => {
       <p>This link will expire in 1 hour.</p>
     `;
 
-    await sendEmail(email, "Password Reset Request", `Reset link: ${resetLink}`, htmlBody);
+    // Send email in background to prevent UI hanging on SMTP connection
+    sendEmail(email, "Password Reset Request", `Reset link: ${resetLink}`, htmlBody).catch(err => {
+      console.error("Background Email Error:", err);
+    });
 
     res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (err) {

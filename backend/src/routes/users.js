@@ -699,6 +699,7 @@ router.get(
            u.full_name,
            u.email,
            u.hire_date,
+           u.profile_photo,
            u.is_active,
            u.created_at,
            u.updated_at,
