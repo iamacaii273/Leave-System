@@ -296,7 +296,7 @@ export default function EmployeeProfile({ onNavigate }) {
 
   const startEditLeave = (balanceId, type, totalValue) => {
     setEditingLeave(type)
-    setEditValue(String(totalValue))
+    setEditValue(String(Math.floor(Number(totalValue))))
     setEditingBalanceId(balanceId)
   }
 
@@ -518,6 +518,7 @@ export default function EmployeeProfile({ onNavigate }) {
                                       onKeyDown={(e) => e.key === "Enter" && saveEditLeave()}
                                       className="w-16 bg-white/60 rounded-lg px-2 py-0.5 text-[16px] font-bold outline-none text-center"
                                       style={{ color: textColor }}
+                                      step="1"
                                       autoFocus
                                     />
                                   ) : `${formatDays(balance.total_days)} days`}
