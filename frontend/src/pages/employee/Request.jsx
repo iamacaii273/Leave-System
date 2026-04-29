@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react"
 import Header from "../../components/Header"
 import { Umbrella, Thermometer, Users, Plane, Smile, HeartHandshake, PartyPopper, MoreHorizontal, ChevronLeft, ChevronRight, Upload, X, Send, CalendarDays, FileText, AlertTriangle } from "lucide-react"
 import api from "../../services/api"
+import { useAuth } from "../../contexts/AuthContext"
+import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
 
 /* ──────────────────────── helpers ──────────────────────── */
 
@@ -27,6 +29,12 @@ function isBetween(d, s, e) {
   if (!s || !e) return false
   const t = d.getTime()
   return t >= s.getTime() && t <= e.getTime()
+}
+
+const statusColors = {
+  approved: { bg: "#0cf1aa", text: "#185b48" },
+  pending: { bg: "#fee481", text: "#6b5413" },
+  default: { bg: "#eef2f9", text: "#3f4a51" }
 }
 
 /**
@@ -95,18 +103,51 @@ function calcDuration(start, end, sH, sM, sAP, eH, eM, eAP, isAllDay) {
 /* ──────────────────────── main component ──────────────────────── */
 
 export default function Request({ onNavigate }) {
+  const { user } = useAuth()
   const [leaveBalances, setLeaveBalances] = useState([])
   const [dbLeaveTypes, setDbLeaveTypes] = useState([])
+  const [myRequests, setMyRequests] = useState([])
 
   useEffect(() => {
     Promise.all([
       api.get('/leave-balances/me'),
-      api.get('/leave-types')
-    ]).then(([balRes, typeRes]) => {
+      api.get('/leave-types'),
+      api.get('/leave-requests/me')
+    ]).then(([balRes, typeRes, reqRes]) => {
       setLeaveBalances(balRes.data.balances || [])
       setDbLeaveTypes(typeRes.data.leaveTypes || [])
+      setMyRequests(reqRes.data.leaveRequests || [])
     }).catch(console.error)
   }, [])
+
+  const activeLeaveDays = useMemo(() => {
+    const map = new Map()
+    myRequests.forEach(r => {
+      const status = r.status.toLowerCase()
+      if (status !== 'approved' && status !== 'pending') return
+      
+      const s = new Date(r.start_date)
+      s.setHours(0, 0, 0, 0)
+      const e = new Date(r.end_date)
+      e.setHours(23, 59, 59, 999)
+      
+      let cur = new Date(s)
+      while (cur <= e) {
+        const dow = cur.getDay()
+        if (dow !== 0 && dow !== 6) {
+          const dateStr = `${cur.getFullYear()}-${cur.getMonth()}-${cur.getDate()}`
+          map.set(dateStr, { 
+            type: r.leave_type_name, 
+            status: r.status,
+            iconName: r.leave_type_icon,
+            colorType: r.leave_type_color
+          })
+        }
+        cur.setDate(cur.getDate() + 1)
+      }
+    })
+    return map
+  }, [myRequests])
 
   /* leave type */
   const [leaveType, setLeaveType] = useState("")
@@ -462,7 +503,7 @@ export default function Request({ onNavigate }) {
                 const inRange = isBetween(thisDate, startDate, endDate)
                 const isToday = isSameDay(thisDate, new Date())
 
-                let cellClass = "py-2 text-[13px] font-semibold rounded-lg cursor-pointer transition-all relative "
+                let cellClass = "py-2 text-[13px] font-semibold rounded-lg cursor-pointer transition-all relative group "
                 if (isStart || isEnd) {
                   cellClass += "bg-[#1c355e] text-white z-10 "
                 } else if (inRange) {
@@ -473,6 +514,9 @@ export default function Request({ onNavigate }) {
                   cellClass += "text-[#3f4a51] hover:bg-[#eef3fa] "
                 }
 
+                const dateStr = `${viewYear}-${viewMonth}-${cell.day}`
+                const leaveInfo = activeLeaveDays.get(dateStr)
+
                 return (
                   <div
                     key={idx}
@@ -480,9 +524,46 @@ export default function Request({ onNavigate }) {
                     onClick={() => handleDayClick(cell.day)}
                   >
                     {cell.day}
-                    {isToday && (
-                      <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#478afb]" />
+                    {(isToday || leaveInfo) && (
+                      <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex items-center justify-center gap-[3px]">
+                        {isToday && <div className="w-1.5 h-1.5 rounded-full bg-[#478afb]" title="Today" />}
+                        {leaveInfo && <div className="w-1.5 h-1.5 rounded-full bg-[#f57a00]" />}
+                      </div>
                     )}
+                    {leaveInfo && (() => {
+                      const { Icon, color, bg } = resolveLeaveTypeStyle(leaveInfo.iconName, leaveInfo.colorType)
+                      const stColor = statusColors[leaveInfo.status.toLowerCase()] || statusColors.default
+                      const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U"
+
+                      return (
+                        <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 hidden group-hover:flex z-50 pointer-events-none">
+                          <div className="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#eef2f9] p-2 flex items-center gap-3 min-w-max">
+                            <div className="w-10 h-10 rounded-full bg-[#eaf4fe] text-[#0070c0] flex items-center justify-center font-bold text-[16px] shrink-0">
+                              {userInitial}
+                            </div>
+                            <div className="flex flex-col justify-center text-left min-w-[100px] mr-2">
+                              <span className="text-[#1f3747] font-bold text-[14px] leading-tight block truncate">
+                                {user?.full_name || "Employee"}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
+                                  <Icon size={9} color={color} strokeWidth={3} />
+                                </div>
+                                <span className="text-[#94a3b8] text-[13px] font-medium truncate">
+                                  {leaveInfo.type}
+                                </span>
+                              </div>
+                            </div>
+                            <div 
+                              className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0"
+                              style={{ backgroundColor: stColor.bg, color: stColor.text }}
+                            >
+                              {leaveInfo.status}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })}
