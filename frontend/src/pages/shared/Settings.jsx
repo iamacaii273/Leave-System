@@ -397,69 +397,21 @@ export default function Settings({ onNavigate, HeaderComponent }) {
             )}
 
             {activeTab === "security" && (
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setSuccessMsg("");
-                setErrMsg("");
-                if (passData.new_password !== passData.confirm_password) {
-                  return setErrMsg("New passwords do not match.");
-                }
-                if (passData.new_password.length < 6) {
-                  return setErrMsg("New password must be at least 6 characters.");
-                }
-                try {
-                  await api.put("/users/me/password", {
-                    current_password: passData.current_password,
-                    new_password: passData.new_password
-                  });
-                  setSuccessMsg("Password updated successfully!");
-                  setPassData({ current_password: "", new_password: "", confirm_password: "" });
-                } catch (err) {
-                  setErrMsg(err.response?.data?.message || "Failed to update password.");
-                }
-              }} className="bg-white rounded-[32px] p-8 shadow-sm">
-                <h2 className="text-[22px] font-bold font-fredoka text-[#2d3e50] mb-6">Password & Security</h2>
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Current Password</label>
-                    <input
-                      type="password"
-                      value={passData.current_password}
-                      onChange={e => setPassData({ ...passData, current_password: e.target.value })}
-                      required
-                      placeholder="Enter current password"
-                      className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#3f4a51] focus:outline-none focus:ring-2 focus:ring-[#1c355e]/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">New Password</label>
-                    <input
-                      type="password"
-                      value={passData.new_password}
-                      onChange={e => setPassData({ ...passData, new_password: e.target.value })}
-                      required
-                      placeholder="Enter new password (min. 6 characters)"
-                      className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#3f4a51] focus:outline-none focus:ring-2 focus:ring-[#1c355e]/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={passData.confirm_password}
-                      onChange={e => setPassData({ ...passData, confirm_password: e.target.value })}
-                      required
-                      placeholder="Re-enter new password"
-                      className="w-full h-12 px-4 bg-[#f4f7fb] rounded-[16px] text-[14px] font-medium text-[#3f4a51] focus:outline-none focus:ring-2 focus:ring-[#1c355e]/20"
-                    />
-                  </div>
-                </div>
-                <div className="mt-10 pt-6 border-t border-[#f1f5f9] flex flex-col items-end gap-4">
-                  <button type="submit" className="!px-10 !py-4 !bg-[#1c355e] text-white rounded-[20px] text-[16px] font-bold hover:bg-[#122340] transition-all transform active:scale-95 shadow-xl shadow-[#1c355e]/25 flex items-center gap-3">
-                    <Save size={22} strokeWidth={2.5} /> Update Password
+              <div className="bg-white rounded-[32px] p-8 shadow-sm">
+                <h2 className="text-[22px] font-bold font-fredoka text-[#2d3e50] mb-3">Password & Security</h2>
+                <p className="text-[#64748b] text-[15px] font-medium mb-6">
+                  For your security, we handle password changes via secure email links. Click the button below and we will send a password reset link directly to your email address: <strong>{user?.email}</strong>.
+                </p>
+                <div className="mt-6 flex justify-start gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePasswordEmailRequest}
+                    className="px-6 py-3 bg-[#f0fdf4] text-[#16a34a] border border-[#86efac] rounded-[16px] text-[14px] font-bold hover:bg-[#dcfce7] transition-colors flex items-center gap-2"
+                  >
+                    <KeyRound size={18} /> Request Password Reset Link
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
             {activeTab === "notifications" && (
