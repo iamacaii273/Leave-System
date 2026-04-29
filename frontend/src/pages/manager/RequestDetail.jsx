@@ -552,29 +552,27 @@ export default function RequestDetail({ onNavigate }) {
                     : "Approve Request"}
               </button>
 
-              {/* Reject — hidden for acknowledged requests */}
-              {request.status !== "acknowledged" && (
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={!!actionLoading}
-                  onMouseEnter={() => setRejHover(true)}
-                  onMouseLeave={() => setRejHover(false)}
-                  style={{
-                    flex: 1, height: "52px", borderRadius: "9999px", border: "none",
-                    backgroundColor: rejHover ? "#f87171" : "#fda4af",
-                    color: "#7f1d1d", fontSize: "15px", fontWeight: 800,
-                    cursor: "pointer", display: "flex", alignItems: "center",
-                    justifyContent: "center", gap: "8px",
-                    opacity: actionLoading ? 0.6 : 1,
-                    transition: "background-color 0.18s, transform 0.12s",
-                    transform: rejHover && !actionLoading ? "translateY(-1px)" : "none",
-                    boxShadow: rejHover && !actionLoading ? "0 6px 20px rgba(248,113,113,0.45)" : "none",
-                  }}
-                >
-                  <XCircle size={18} strokeWidth={2.5} />
-                  Reject Request
-                </button>
-              )}
+              {/* Reject */}
+              <button
+                onClick={() => setShowRejectModal(true)}
+                disabled={!!actionLoading}
+                onMouseEnter={() => setRejHover(true)}
+                onMouseLeave={() => setRejHover(false)}
+                style={{
+                  flex: 1, height: "52px", borderRadius: "9999px", border: "none",
+                  backgroundColor: rejHover ? "#f87171" : "#fda4af",
+                  color: "#7f1d1d", fontSize: "15px", fontWeight: 800,
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: "8px",
+                  opacity: actionLoading ? 0.6 : 1,
+                  transition: "background-color 0.18s, transform 0.12s",
+                  transform: rejHover && !actionLoading ? "translateY(-1px)" : "none",
+                  boxShadow: rejHover && !actionLoading ? "0 6px 20px rgba(248,113,113,0.45)" : "none",
+                }}
+              >
+                <XCircle size={18} strokeWidth={2.5} />
+                Reject Request
+              </button>
             </div>
             <p style={{ textAlign: "center", fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
               An automated notification will be sent to the employee
