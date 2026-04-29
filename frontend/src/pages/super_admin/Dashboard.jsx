@@ -26,6 +26,11 @@ export default function SuperAdminDashboard({ onNavigate }) {
         const mappedUsers = data.users.filter(u => u.role !== 'Super Admin').map((u, i) => {
           const nameStr = u.full_name || u.username || 'Unknown User'
           const initials = nameStr.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+          // For HR/Manager with managed departments, show all managed dept names
+          const managedDepts = Array.isArray(u.managed_departments) ? u.managed_departments : []
+          const deptDisplay = (u.role === 'HR' || u.role === 'Manager') && managedDepts.length > 0
+            ? managedDepts
+            : [u.department || 'No Dept']
           return {
             id: u.id,
             name: nameStr,
@@ -33,6 +38,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
             role: u.role || 'Employee',
             status: u.is_active === 1 ? 'Active' : 'Resigned',
             department: u.department || 'No Dept',
+            departments: deptDisplay,
             img: null,
             initial: initials || 'XX',
             initialBg: colors[i % colors.length]
@@ -69,14 +75,14 @@ export default function SuperAdminDashboard({ onNavigate }) {
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesRole = filterRole === "all" || u.role === filterRole
-    const matchesDept = filterDept === "all" || u.department === filterDept
+    const matchesDept = filterDept === "all" || u.departments.includes(filterDept)
     const matchesStatus = filterStatus === "all" || u.status === filterStatus
 
     return matchesSearch && matchesRole && matchesDept && matchesStatus
   })
 
-  // Get unique departments for filter dropdown
-  const departments = Array.from(new Set(allUsers.map(u => u.department))).filter(Boolean).sort()
+  // Get unique departments for filter dropdown (include all managed departments)
+  const departments = Array.from(new Set(allUsers.flatMap(u => u.departments))).filter(Boolean).sort()
 
   // Pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
@@ -269,7 +275,20 @@ export default function SuperAdminDashboard({ onNavigate }) {
 
                   {/* Department */}
                   <div className="flex justify-center">
-                    <span className="text-[13px] font-bold text-[#4c6367]">{user.department}</span>
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {user.departments.map((dept, dIdx) => (
+                        <span
+                          key={dIdx}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                          style={{
+                            backgroundColor: '#eef2f9',
+                            color: '#4c6367'
+                          }}
+                        >
+                          {dept}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Role Badge */}

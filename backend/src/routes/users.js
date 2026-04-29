@@ -504,6 +504,45 @@ router.get(
        ORDER  BY u.full_name ASC`, params
       );
 
+      // Enrich HR/Manager users with their managed department names
+      const hrUserIds = rows.filter(u => u.role === 'HR').map(u => u.id);
+      const mgrUserIds = rows.filter(u => u.role === 'Manager').map(u => u.id);
+
+      const managedDeptMap = {};
+
+      if (hrUserIds.length > 0) {
+        const [hrDepts] = await pool.query(
+          `SELECT x.user_id, d.name
+           FROM hr_departments x
+           JOIN departments d ON x.department_id = d.id
+           WHERE x.user_id IN (?)`,
+          [hrUserIds]
+        );
+        for (const row of hrDepts) {
+          if (!managedDeptMap[row.user_id]) managedDeptMap[row.user_id] = [];
+          managedDeptMap[row.user_id].push(row.name);
+        }
+      }
+
+      if (mgrUserIds.length > 0) {
+        const [mgrDepts] = await pool.query(
+          `SELECT x.user_id, d.name
+           FROM manager_departments x
+           JOIN departments d ON x.department_id = d.id
+           WHERE x.user_id IN (?)`,
+          [mgrUserIds]
+        );
+        for (const row of mgrDepts) {
+          if (!managedDeptMap[row.user_id]) managedDeptMap[row.user_id] = [];
+          managedDeptMap[row.user_id].push(row.name);
+        }
+      }
+
+      // Attach managed_departments to each user
+      for (const user of rows) {
+        user.managed_departments = managedDeptMap[user.id] || [];
+      }
+
       res.json({ users: rows });
     } catch (err) {
       console.error("GET / error:", err);

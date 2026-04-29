@@ -133,7 +133,7 @@ export default function RequestDetail({ onNavigate }) {
                 )}
                 {request.hire_date && (
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#64748b", fontSize: "13px", fontWeight: 600 }}>
-                    <CalendarDays size={12} strokeWidth={2.5} />Start Date: {formatDate(request.hire_date)}
+                    <CalendarDays size={12} strokeWidth={2.5} />Hire Date: {formatDate(request.hire_date)}
                   </div>
                 )}
               </div>
