@@ -3,6 +3,7 @@ import { Calendar, Users, CalendarDays, CheckSquare } from "lucide-react"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import { useDepartment } from "../../contexts/DepartmentContext"
+import Avatar from "../../components/Avatar"
 
 function formatToday() {
   return new Date().toLocaleDateString("en-US", {
@@ -190,9 +191,11 @@ export default function Dashboard({ onNavigate }) {
                       className="flex items-center justify-between p-4 bg-[#f4f7f9] rounded-[24px] cursor-pointer hover:bg-[#eaf1f5] transition-colors"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-[#d9ecf7] text-[#1f6d99] flex items-center justify-center font-fredoka font-bold text-[15px] shadow-sm">
-                          {getInitials(emp.full_name)}
-                        </div>
+                        <Avatar
+                          src={emp.profile_photo}
+                          name={emp.full_name}
+                          size={48}
+                        />
                         <div>
                           <p className="font-bold text-[16px] text-[#1f3747] mb-0.5 font-fredoka">{emp.full_name}</p>
                           <p className="text-[12px] font-medium text-[#7a8c98]">{emp.position || emp.email}</p>

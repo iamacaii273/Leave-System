@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
+import Avatar from "../../components/Avatar"
 
 // Color name → hex background (mirrors LeaveType.jsx colorStyles)
 const COLOR_MAP = {
@@ -173,9 +174,6 @@ export default function EmployeeProfile({ onNavigate }) {
   const { id } = useParams()
   const fileInputRef = useRef(null)
 
-
-
-  const [profileImg, setProfileImg] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   const [editingLeave, setEditingLeave] = useState(null)
@@ -284,14 +282,7 @@ export default function EmployeeProfile({ onNavigate }) {
   }
 
   const handleProfilePicChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setProfileImg(reader.result)
-    }
-    reader.readAsDataURL(file)
+    // No-op: profile photo is managed from Settings page
   }
 
   const startEditLeave = (balanceId, type, totalValue) => {
@@ -416,19 +407,13 @@ export default function EmployeeProfile({ onNavigate }) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
               <div className="flex gap-8 group relative">
                 <div className="relative">
-                  {profileImg ? (
-                    <img src={profileImg} alt={displayedName} className="w-40 h-40 object-cover rounded-[32px] border-4 border-white shadow-sm" />
-                  ) : (
-                    <div className="w-40 h-40 rounded-[32px] border-4 border-white shadow-sm bg-[#d9ecf7] text-[#2a617f] flex items-center justify-center font-fredoka font-bold text-[52px]">
-                      {getInitials(displayedName)}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-2 -right-2 bg-white rounded-full p-2.5 shadow-md text-[#64748b] hover:text-[#3f4a51] transition-colors border border-gray-50"
-                  >
-                    <PenLine size={18} />
-                  </button>
+                  <Avatar
+                    src={employee.profile_photo}
+                    name={displayedName}
+                    size={160}
+                    radius="32px"
+                    style={{ border: "4px solid white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                  />
                 </div>
                 <div className="flex flex-col justify-center pt-2">
                   <div className="flex items-center gap-4 mb-4">

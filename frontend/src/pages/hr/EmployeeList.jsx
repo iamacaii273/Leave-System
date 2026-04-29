@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import { useDepartment } from "../../contexts/DepartmentContext"
+import Avatar from "../../components/Avatar"
 
 function getInitials(name = "") {
   return name
@@ -182,12 +183,12 @@ export default function EmployeeList({ onNavigate }) {
                   <div key={emp.id}>
                     <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center py-6 px-4 hover:bg-gray-50/50 transition-colors rounded-2xl">
                       <div className="flex items-center gap-5">
-                        <div
-                          className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-[#323940] text-[20px] font-fredoka shadow-sm"
+                        <Avatar
+                          src={emp.profile_photo}
+                          name={emp.full_name}
+                          size={56}
                           style={{ backgroundColor: emp.bg }}
-                        >
-                          {emp.initial}
-                        </div>
+                        />
                         <div>
                           <p className="font-bold text-[17px] font-fredoka text-[#323940] mb-0.5">{emp.full_name}</p>
                           <p className="text-[13px] font-medium text-[#7a8c98]">{emp.email}</p>

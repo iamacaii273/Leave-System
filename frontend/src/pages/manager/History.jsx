@@ -4,6 +4,7 @@ import api from "../../services/api"
 import { useDepartment } from "../../contexts/DepartmentContext"
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
+import Avatar from "../../components/Avatar"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -66,8 +67,12 @@ function HistoryRow({ req, onNavigate }) {
       <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[24px]" style={{ backgroundColor: accent }} />
 
       {/* Avatar */}
-      <div className="w-11 h-11 rounded-full bg-sky-100 flex items-center justify-center shrink-0 text-sky-600 font-bold text-[15px] relative ml-2">
-        {(req.full_name || "?")[0].toUpperCase()}
+      <div className="relative ml-2">
+        <Avatar
+          src={req.profile_photo}
+          name={req.full_name}
+          size={44}
+        />
         <span
           className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white"
           style={{ backgroundColor: accent === "#e2e8f0" ? "#94a3b8" : accent }}

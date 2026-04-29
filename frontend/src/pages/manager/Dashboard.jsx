@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock
 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
+import Avatar from "../../components/Avatar"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getGreeting() {
@@ -228,9 +229,11 @@ function MiniCalendar({ requests = [] }) {
                 const { Icon, color, bg } = resolveLeaveTypeStyle(r.leave_type_icon, r.leave_type_color)
                 return (
                   <div key={r.id} className="flex items-center gap-2.5 p-2.5 bg-[#f9fafb] rounded-2xl">
-                    <div className="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center shrink-0 text-sky-600 font-bold text-[11px]">
-                      {(r.full_name || "?")[0].toUpperCase()}
-                    </div>
+                    <Avatar
+                      src={r.profile_photo}
+                      name={r.full_name}
+                      size={28}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-[12px] text-[#2d3e50] truncate">{r.full_name}</p>
                       <div className="flex items-center gap-1 mt-0.5">
@@ -464,9 +467,11 @@ export default function Dashboard({ onNavigate }) {
                       className="flex items-center gap-4 p-4 bg-[#f9fafb] rounded-[22px] hover:bg-[#f1f5f9] transition-all cursor-pointer hover:scale-[1.005] active:scale-[0.995]"
                     >
                       {/* Avatar */}
-                      <div className="w-11 h-11 rounded-full bg-sky-100 flex items-center justify-center shrink-0 text-sky-600 font-bold text-[15px]">
-                        {(req.full_name || "?")[0].toUpperCase()}
-                      </div>
+                      <Avatar
+                        src={req.profile_photo}
+                        name={req.full_name}
+                        size={44}
+                      />
 
                       {/* Person */}
                       <div className="flex-1 min-w-[130px]">

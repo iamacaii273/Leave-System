@@ -3,6 +3,7 @@ import { Users, UserRoundX, UserCheck, UserCog, User, UserPlus, IdCardLanyard, C
 import { useNavigate } from "react-router-dom"
 import api from "../../services/api"
 import Header from "../../components/Header"
+import Avatar from "../../components/Avatar"
 
 export default function SuperAdminDashboard({ onNavigate }) {
   const navigate = useNavigate()
@@ -47,7 +48,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
             status: u.is_active === 1 ? 'Active' : 'Resigned',
             department: u.department || 'No Dept',
             departments: deptDisplay,
-            img: null,
+            img: u.profile_photo,
             initial: initials || 'XX',
             initialBg: colors[i % colors.length]
           }
@@ -293,13 +294,12 @@ export default function SuperAdminDashboard({ onNavigate }) {
                 <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_1fr_0.8fr] gap-4 items-center px-8 py-5 hover:bg-[#f9fafb] transition-colors">
                   {/* User Profile */}
                   <div className="flex items-center gap-4">
-                    {user.img ? (
-                      <img src={`https://i.pravatar.cc/150?img=${user.img}`} className="w-11 h-11 rounded-full object-cover shadow-sm" alt={user.name} />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-[14px] font-fredoka text-[#323940] shadow-sm" style={{ backgroundColor: user.initialBg }}>
-                        {user.initial}
-                      </div>
-                    )}
+                    <Avatar
+                      src={user.img}
+                      name={user.name}
+                      size={44}
+                      style={{ backgroundColor: user.initialBg }}
+                    />
                     <div>
                       <p className="font-bold text-[15px] text-[#323940] mb-0.5">{user.name}</p>
                       <p className="text-[12px] font-medium text-[#94a3b8]">{user.email}</p>

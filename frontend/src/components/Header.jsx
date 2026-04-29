@@ -1,9 +1,10 @@
-import { Bell, User, X, CheckSquare, Clock } from "lucide-react"
+import { Bell, X, CheckSquare, Clock } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect, useRef } from "react"
 import api from "../services/api"
 import { useDepartment } from "../contexts/DepartmentContext"
+import Avatar from "./Avatar"
 
 // Nav items per role — single source of truth
 const ROLE_NAV_ITEMS = {
@@ -253,9 +254,12 @@ export default function Header({ activePage = "dashboard", onNavigate }) {
               <p className="text-[13px] font-bold font-fredoka text-[#1e3450]">{user?.full_name}</p>
               <p className="text-[11px] text-[#64748b] capitalize">{user?.role}</p>
             </div>
-            <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center shadow-sm">
-              <User size={20} className="text-sky-600" />
-            </div>
+            <Avatar
+              src={user?.profile_photo}
+              name={user?.full_name}
+              size={40}
+              style={{ border: "2px solid #e2e8f0" }}
+            />
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { Camera, ChevronDown, CheckCircle, Ban, Shield, Bell, Settings, User, Briefcase, Lock, Loader2, Building2 } from "lucide-react"
 import api from "../../services/api"
 import Header from "../../components/Header"
+import Avatar from "../../components/Avatar"
 
 
 
@@ -254,19 +255,13 @@ export default function EditUser({ onNavigate }) {
             <div className="bg-white rounded-[24px] p-8 shadow-sm flex flex-col items-center">
               {/* Avatar */}
               <div className="relative mb-4">
-                {profileImg ? (
-                  <img src={profileImg} alt={fullName} className="w-[100px] h-[100px] rounded-3xl object-cover border-4 border-[#eef2f9] shadow-sm" />
-                ) : (
-                  <div className="w-[100px] h-[100px] rounded-3xl flex items-center justify-center font-bold text-[32px] font-fredoka text-[#323940] border-4 border-[#eef2f9] shadow-sm" style={{ backgroundColor: userData.initialBg || '#e2e8f0' }}>
-                    {userData.initial || fullName.split(' ').map(n => n[0]).join('')}
-                  </div>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md bg-white border border-gray-100"
-                >
-                  <Settings size={14} className="text-gray-500" />
-                </button>
+                <Avatar
+                  src={profileImg || userData.profile_photo}
+                  name={fullName}
+                  size={100}
+                  className="rounded-3xl border-4 border-[#eef2f9] shadow-sm"
+                  style={{ backgroundColor: userData.initialBg || '#e2e8f0' }}
+                />
               </div>
 
               <h3 className="text-[18px] font-fredoka font-bold text-[#1f3747] mb-1 text-center">{fullName}</h3>
