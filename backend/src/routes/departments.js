@@ -81,10 +81,68 @@ router.post("/", verifyToken, requireRole("Super Admin"), async (req, res) => {
       [id, name]
     );
 
+    // Auto-create 3 default leave types for the new department
+    const defaultTypes = [
+      {
+        id: uuidv4(),
+        name: 'Sick Leave',
+        default_days_per_year: 30,
+        description: 'A type of paid or unpaid time off from work. It is authorized absence permitted due to illness, injury, or to attend to medical needs.',
+        color_type: 'green',
+        icon_name: 'thermometer',
+        requires_attachment: 1,
+        requires_manager_approval: 0,
+        carryover: 0,
+        min_service_months: 0
+      },
+      {
+        id: uuidv4(),
+        name: 'Annual Leave',
+        default_days_per_year: 6,
+        description: 'A stipulated period of paid time off work granted by employers, allowing employees to rest, travel, or handle personal matters without losing income',
+        color_type: 'orange',
+        icon_name: 'umbrella',
+        requires_attachment: 0,
+        requires_manager_approval: 1,
+        carryover: 1,
+        min_service_months: 12
+      },
+      {
+        id: uuidv4(),
+        name: 'Personal Leave',
+        default_days_per_year: 3,
+        description: 'Unique or unforeseen personal situations that are not covered by standard sick leave or vacation time (PTO)',
+        color_type: 'blue',
+        icon_name: 'user',
+        requires_attachment: 0,
+        requires_manager_approval: 1,
+        carryover: 0,
+        min_service_months: 0
+      }
+    ];
+
+    const typeInserts = defaultTypes.map(t => [
+      t.id, t.name, t.default_days_per_year, t.description, t.color_type, t.icon_name, 
+      t.requires_attachment, t.requires_manager_approval, t.carryover, t.min_service_months
+    ]);
+
+    await pool.query(
+      `INSERT INTO leave_types
+         (id, name, default_days_per_year, description, color_type, icon_name, requires_attachment, requires_manager_approval, carryover, min_service_months)
+       VALUES ?`,
+      [typeInserts]
+    );
+
+    const ltdInserts = defaultTypes.map(t => [t.id, id]);
+    await pool.query(
+      "INSERT INTO leave_type_departments (leave_type_id, department_id) VALUES ?",
+      [ltdInserts]
+    );
+
     await logAction(req.user.id, "department_created", `Created department: ${name}`);
 
     const [rows] = await pool.query("SELECT * FROM departments WHERE id = ?", [id]);
-    res.status(201).json({ message: "Department created successfully.", department: rows[0] });
+    res.status(201).json({ message: "Department created successfully with default leave types.", department: rows[0] });
   } catch (err) {
     console.error("POST /departments error:", err);
     res.status(500).json({ message: "Internal server error." });
