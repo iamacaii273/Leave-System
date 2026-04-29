@@ -70,6 +70,7 @@ router.get("/dashboard", ...guard, async (req, res) => {
          u.id,
          u.full_name,
          u.email,
+         u.profile_photo,
          p.name AS position,
          CASE
            WHEN EXISTS (
@@ -278,7 +279,7 @@ router.get("/employee-balances", ...guard, async (req, res) => {
 
     // 1. Fetch all active employees
     const [employees] = await pool.query(
-      `SELECT u.id, u.full_name, u.hire_date, u.department_id, d.name AS department_name
+      `SELECT u.id, u.full_name, u.hire_date, u.department_id, u.profile_photo, d.name AS department_name
        FROM users u
        JOIN roles r ON u.role_id = r.id
        LEFT JOIN departments d ON u.department_id = d.id
@@ -357,6 +358,7 @@ router.get("/employee-balances", ...guard, async (req, res) => {
         hire_date: u.hire_date,
         department_id: u.department_id,
         department_name: u.department_name || 'Unknown Department',
+        profile_photo: u.profile_photo || null,
         balances: empBalances
       };
     });

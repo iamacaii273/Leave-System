@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, Search
 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
+import Avatar from "../../components/Avatar"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const MONTH_NAMES = [
@@ -372,8 +373,12 @@ function RequestCard({ req, onApprove, onReject, onAcknowledge }) {
         {/* ── Main row ── */}
         <div className="flex items-center gap-4 p-5 cursor-pointer select-none" onClick={() => setExpanded(e => !e)}>
           {/* Avatar */}
-          <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center shrink-0 text-sky-600 font-bold text-[16px] relative">
-            {(req.full_name || "?")[0].toUpperCase()}
+          <div className="relative shrink-0">
+            <Avatar
+              src={req.profile_photo}
+              name={req.full_name}
+              size={48}
+            />
             <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white bg-[#94a3b8]" />
           </div>
 

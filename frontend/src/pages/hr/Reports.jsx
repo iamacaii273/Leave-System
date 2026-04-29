@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import Header from "../../components/Header"
 import api from "../../services/api"
 import { useDepartment } from "../../contexts/DepartmentContext"
+import Avatar from "../../components/Avatar"
 
 // Utilities
 function getInitials(name = "") {
@@ -191,6 +192,7 @@ export default function Reports({ onNavigate }) {
           loadedBalances.push({
             id: emp.user_id,
             name: emp.full_name,
+            profile_photo: emp.profile_photo,
             initial: getInitials(emp.full_name),
             bg: getUserColor(emp.user_id),
             department_id: emp.department_id,
@@ -203,6 +205,7 @@ export default function Reports({ onNavigate }) {
         const loadedHistory = histRes.data.leaveRequests.map(r => ({
           id: r.id,
           name: r.full_name,
+          profile_photo: r.profile_photo,
           initial: getInitials(r.full_name),
           bg: getUserColor(r.user_id),
           type: r.leave_type_name,
@@ -401,9 +404,12 @@ export default function Reports({ onNavigate }) {
                         <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
                           <td className="py-4 px-8">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[#1f3747] text-[12px] font-fredoka shrink-0" style={{ backgroundColor: row.bg }}>
-                                {row.initial}
-                              </div>
+                              <Avatar
+                                src={row.profile_photo}
+                                name={row.name}
+                                size={32}
+                                style={{ backgroundColor: row.bg }}
+                              />
                               <span
                                 className="font-bold text-[14px] text-[#3f4a51] cursor-pointer hover:text-[#006dae] hover:underline transition-colors"
                                 onClick={() => onNavigate && onNavigate(`employee/${row.id}`)}
@@ -681,9 +687,12 @@ export default function Reports({ onNavigate }) {
                       >
                         <td className="py-3 px-4 rounded-l-[24px]">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[#1f3747] text-[11px] font-fredoka shrink-0" style={{ backgroundColor: hist.bg }}>
-                              {hist.initial}
-                            </div>
+                            <Avatar
+                              src={hist.profile_photo}
+                              name={hist.name}
+                              size={32}
+                              style={{ backgroundColor: hist.bg }}
+                            />
                             <span className="font-bold text-[14px] text-[#3f4a51]">{hist.name}</span>
                           </div>
                         </td>

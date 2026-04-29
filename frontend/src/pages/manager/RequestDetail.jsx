@@ -10,6 +10,7 @@ import {
   Thermometer, Users, AlertTriangle
 } from "lucide-react"
 import { resolveLeaveTypeStyle } from "../../utils/leaveTypeUtils"
+import Avatar from "../../components/Avatar"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -185,9 +186,14 @@ export default function RequestDetail({ onNavigate }) {
         {/* ── Employee Profile ── */}
         <div style={{ background: "white", borderRadius: "24px", padding: "24px 28px", marginBottom: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: "16px", alignItems: "center", flex: "1 1 260px" }}>
-            <div style={{ width: "68px", height: "68px", borderRadius: "18px", background: "#cdecea", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", flexShrink: 0 }}>
-              <span style={{ fontSize: "26px", fontWeight: 800, color: "#466063" }}>{(request.full_name || "?")[0].toUpperCase()}</span>
-              <span style={{ position: "absolute", bottom: "4px", right: "4px", width: "14px", height: "14px", borderRadius: "50%", background: "#0cf1aa", border: "2px solid white" }} />
+            <div style={{ position: "relative", width: "68px", height: "68px", flexShrink: 0 }}>
+              <Avatar
+                src={request.profile_photo}
+                name={request.full_name || "?"}
+                size={68}
+                radius="18px"
+              />
+              <span style={{ position: "absolute", bottom: "-2px", right: "-2px", width: "16px", height: "16px", borderRadius: "50%", background: "#0cf1aa", border: "3px solid white" }} />
             </div>
             <div>
               <h2 style={{ fontFamily: "Fredoka, sans-serif", fontSize: "24px", fontWeight: 700, color: "#2d3e50", marginBottom: "6px" }}>{request.full_name}</h2>
@@ -387,9 +393,11 @@ export default function RequestDetail({ onNavigate }) {
                   : `${formatDateShort(h.start_date)} – ${formatDateShort(h.end_date)}`
                 return (
                   <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 0", borderBottom: idx < pagedHistory.length - 1 ? "1px solid #f0f4f9" : "none" }}>
-                    <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#cdecea", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "14px", fontWeight: 800, color: "#466063" }}>
-                      {(request.full_name || "?")[0].toUpperCase()}
-                    </div>
+                    <Avatar
+                      src={request.profile_photo}
+                      name={request.full_name || "?"}
+                      size={38}
+                    />
                     <div style={{ minWidth: "110px" }}>
                       <p style={{ fontSize: "13px", fontWeight: 700, color: "#2d3e50" }}>{request.full_name}</p>
                       <p style={{ fontSize: "11px", color: "#94a3b8" }}>{request.position || ""}</p>

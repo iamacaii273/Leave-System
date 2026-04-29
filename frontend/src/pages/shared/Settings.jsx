@@ -1,18 +1,23 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
-import { ShieldAlert, User, KeyRound, Save, BadgeCheck, Bell, Smartphone, Lock, LogOut, ChevronDown, Building2 } from "lucide-react"
+import { ShieldAlert, User, KeyRound, Save, BadgeCheck, Bell, Smartphone, Lock, LogOut, ChevronDown, Building2, Camera, Trash2, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import Avatar from "../../components/Avatar"
 
 export default function Settings({ onNavigate, HeaderComponent }) {
   const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
+  const avatarInputRef = useRef(null)
 
   // States
   const [activeTab, setActiveTab] = useState("profile")
   const [successMsg, setSuccessMsg] = useState("")
   const [errMsg, setErrMsg] = useState("")
   const [notifEnabled, setNotifEnabled] = useState(true)
+  const [avatarPreview, setAvatarPreview] = useState(null)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   // Form State
   const [profileData, setProfileData] = useState({
@@ -127,6 +132,51 @@ export default function Settings({ onNavigate, HeaderComponent }) {
     }
   }
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    setUploadingAvatar(true)
+    setSuccessMsg("")
+    setErrMsg("")
+    
+    // Show local preview immediately
+    setAvatarPreview(URL.createObjectURL(file))
+    
+    try {
+      const formData = new FormData()
+      formData.append("avatar", file)
+      const res = await api.post("/users/me/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      })
+      updateUser({ ...user, profile_photo: res.data.profile_photo })
+      setSuccessMsg("Profile photo updated!")
+      setAvatarFile(null)
+      setAvatarPreview(null)
+    } catch (err) {
+      setErrMsg(err.response?.data?.message || "Failed to upload photo.")
+      setAvatarPreview(null)
+    } finally {
+      setUploadingAvatar(false)
+      if (e.target) e.target.value = ""
+    }
+  }
+
+
+
+  const handleAvatarRemove = async () => {
+    if (!window.confirm("Remove your profile photo?")) return
+    try {
+      await api.delete("/users/me/avatar")
+      updateUser({ ...user, profile_photo: null })
+      setAvatarPreview(null)
+      setAvatarFile(null)
+      setSuccessMsg("Profile photo removed.")
+    } catch (err) {
+      setErrMsg("Failed to remove photo.")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#eef2f9] flex flex-col">
       <HeaderComponent activePage="settings" onNavigate={onNavigate} />
@@ -191,6 +241,63 @@ export default function Settings({ onNavigate, HeaderComponent }) {
             {activeTab === "profile" && (
               <form onSubmit={handleProfileSave} className="bg-white rounded-[32px] p-8 shadow-sm">
                 <h2 className="text-[22px] font-bold font-fredoka text-[#2d3e50] mb-6">Personal Information</h2>
+
+                {/* Profile Photo */}
+                <div className="flex items-center gap-6 mb-8 pb-8 border-b border-[#f1f5f9]">
+                  <div className="relative group">
+                    <Avatar
+                      src={avatarPreview || user?.profile_photo}
+                      name={user?.full_name}
+                      size={80}
+                      radius="20px"
+                      style={{ border: "3px solid #e2e8f0" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => !uploadingAvatar && avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className={`absolute inset-0 rounded-[20px] bg-black/40 flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 size={24} className="text-white animate-spin" />
+                      ) : (
+                        <Camera size={20} className="text-white" />
+                      )}
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className="font-bold text-[15px] text-[#2d3e50]">{user?.full_name}</p>
+                    <p className="text-[12px] text-[#94a3b8] font-medium">JPG, PNG or WebP • Max 5MB</p>
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="px-4 py-2 bg-[#f0f3f8] text-[#1c355e] rounded-[12px] text-[13px] font-bold hover:bg-[#e2e8f0] transition-colors disabled:opacity-50"
+                      >
+                        {uploadingAvatar ? "Updating..." : "Change Photo"}
+                      </button>
+                      {(user?.profile_photo || avatarPreview) && (
+                        <button
+                          type="button"
+                          onClick={handleAvatarRemove}
+                          disabled={uploadingAvatar}
+                          className="px-4 py-2 bg-[#fef2f2] text-[#dc2626] rounded-[12px] text-[13px] font-bold hover:bg-[#fee2e2] transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <Trash2 size={14} /> Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-5">
                   <div>
                     <label className="block text-[12px] font-[800] tracking-widest uppercase text-[#94a3b8] mb-2">Username</label>

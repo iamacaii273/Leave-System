@@ -4,6 +4,27 @@ const pool = require("../db");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { logAction } = require("../utils/logger");
 const { v4: uuidv4 } = require("uuid");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+require("dotenv").config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const avatarStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "leave-system/avatars",
+    resource_type: "image",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+  },
+});
+const avatarUpload = multer({ storage: avatarStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ─── Shared SELECT columns (no password_hash) ────────────────────────────────
 const USER_SELECT = `
@@ -15,6 +36,7 @@ const USER_SELECT = `
   u.hire_date,
   u.is_active,
   u.notifications_enabled,
+  u.profile_photo,
   u.created_at,
   u.updated_at,
   u.role_id,
@@ -243,6 +265,40 @@ router.put("/me", verifyToken, async (req, res) => {
     res.json({ message: "Profile updated successfully.", user: freshUser });
   } catch (err) {
     console.error("PUT /me error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+
+// ─── 3b. POST /me/avatar — Upload profile photo ──────────────────────────────
+router.post("/me/avatar", verifyToken, avatarUpload.single("avatar"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "No image file provided." });
+  }
+  try {
+    const photoUrl = req.file.path; // Cloudinary URL
+    await pool.query(
+      "UPDATE users SET profile_photo = ? WHERE id = ? AND deleted_at IS NULL",
+      [photoUrl, req.user.id]
+    );
+    await logAction(req.user.id, "avatar_updated", "User updated their profile photo.");
+    res.json({ message: "Profile photo updated.", profile_photo: photoUrl });
+  } catch (err) {
+    console.error("POST /me/avatar error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+
+// ─── 3c. DELETE /me/avatar — Remove profile photo ────────────────────────────
+router.delete("/me/avatar", verifyToken, async (req, res) => {
+  try {
+    await pool.query(
+      "UPDATE users SET profile_photo = NULL WHERE id = ? AND deleted_at IS NULL",
+      [req.user.id]
+    );
+    await logAction(req.user.id, "avatar_removed", "User removed their profile photo.");
+    res.json({ message: "Profile photo removed.", profile_photo: null });
+  } catch (err) {
+    console.error("DELETE /me/avatar error:", err);
     res.status(500).json({ message: "Internal server error." });
   }
 });
@@ -591,6 +647,7 @@ router.get(
            u.full_name,
            u.email,
            u.hire_date,
+           u.profile_photo,
            u.is_active,
            u.created_at,
            u.updated_at,
