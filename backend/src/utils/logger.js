@@ -20,6 +20,10 @@ const logAction = async (userId, action, description = null) => {
     'password_changed',
     'user_resigned',
     'user_created',
+    'position_created',
+    'position_updated',
+    'position_deleted',
+    'position_restored',
   ]
 
   if (!allowedActions.includes(action)) {

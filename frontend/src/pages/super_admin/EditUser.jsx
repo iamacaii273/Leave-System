@@ -6,12 +6,6 @@ import Header from "../../components/Header"
 
 
 
-const POSITIONS = [
-  { id: 'ps000001-0000-0000-0000-000000000001', name: 'Developer' },
-  { id: 'ps000001-0000-0000-0000-000000000002', name: 'HR Officer' },
-  { id: 'ps000001-0000-0000-0000-000000000010', name: 'Team Manager' }
-];
-
 const PHONE_PREFIXES = [
   { code: '+66', label: '+66 (TH)', max: 10, placeholder: "0812345678" },
   { code: '+1', label: '+1 (US)', max: 10, placeholder: "5550000000" },
@@ -48,6 +42,7 @@ export default function EditUser({ onNavigate }) {
   const [profileImg, setProfileImg] = useState(null)
   const [departments, setDepartments] = useState([])
   const [roles, setRoles] = useState([])
+  const [positions, setPositions] = useState([])
 
   const isMultiSelect = form.role === 'rl000001-0000-0000-0000-000000000002' || form.role === 'rl000001-0000-0000-0000-000000000003';
 
@@ -87,15 +82,20 @@ export default function EditUser({ onNavigate }) {
     }
   }, [form.role, isMultiSelect]);
 
+  // Filter positions based on selected role
+  const filteredPositions = positions.filter(p => p.role_id === form.role)
+
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const [deptRes, roleRes] = await Promise.all([
+        const [deptRes, roleRes, posRes] = await Promise.all([
           api.get('/departments'),
-          api.get('/metadata/roles')
+          api.get('/metadata/roles'),
+          api.get('/metadata/positions')
         ])
         setDepartments(deptRes.data.departments || [])
         setRoles(roleRes.data.roles || [])
+        setPositions(posRes.data.positions || [])
       } catch (err) {
         console.error("Failed to fetch metadata:", err)
       }
@@ -393,7 +393,8 @@ export default function EditUser({ onNavigate }) {
                     onChange={(e) => setForm(p => ({ ...p, position: e.target.value }))}
                     className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                   >
-                    {POSITIONS.map(p => (
+                    {filteredPositions.length === 0 && <option value="">No positions for this role</option>}
+                    {filteredPositions.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>

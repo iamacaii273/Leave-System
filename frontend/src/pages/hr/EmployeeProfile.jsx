@@ -735,7 +735,9 @@ export default function EmployeeProfile({ onNavigate }) {
                   className="w-full bg-[#f4f7f9] rounded-2xl py-3.5 px-5 text-[15px] font-bold text-[#323940] appearance-none border-none outline-none focus:ring-2 focus:ring-[#567278]/20 cursor-pointer"
                 >
                   <option value="">Select Position</option>
-                  {positions.map(p => (
+                  {positions
+                    .filter(p => p.role_id === ROLE_IDS[accessSettings.role])
+                    .map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>

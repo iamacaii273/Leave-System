@@ -26,6 +26,7 @@ const ROLE_NAV_ITEMS = {
   "Super Admin": [
     { id: "dashboard", label: "Dashboard" },
     { id: "departments", label: "Departments" },
+    { id: "positions", label: "Positions" },
   ],
 }
 

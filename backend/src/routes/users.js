@@ -27,7 +27,7 @@ const USER_SELECT = `
 
 const USER_JOINS = `
   JOIN roles     r ON u.role_id     = r.id
-  JOIN positions p ON u.position_id = p.id
+  LEFT JOIN positions p ON u.position_id = p.id
   LEFT JOIN departments d ON u.department_id = d.id
 `;
 

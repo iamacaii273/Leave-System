@@ -10,20 +10,27 @@ export default function SuperAdminDashboard({ onNavigate }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRole, setFilterRole] = useState("all")
   const [filterDept, setFilterDept] = useState("all")
+  const [filterPos, setFilterPos] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
   const itemsPerPage = 8
 
   const [allUsers, setAllUsers] = useState([])
+  const [allPositions, setAllPositions] = useState([])
+  const [allDepartments, setAllDepartments] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchUsers = async () => {
       setIsLoading(true)
       try {
-        const { data } = await api.get('/users')
+        const [usersRes, posRes, deptRes] = await Promise.all([
+          api.get('/users'),
+          api.get('/metadata/positions'),
+          api.get('/departments')
+        ])
         const colors = ['#fef08a', '#c4b5fd', '#a7f3d0', '#fca5a5', '#bae6fd']
 
-        const mappedUsers = data.users.filter(u => u.role !== 'Super Admin').map((u, i) => {
+        const mappedUsers = usersRes.data.users.filter(u => u.role !== 'Super Admin').map((u, i) => {
           const nameStr = u.full_name || u.username || 'Unknown User'
           const initials = nameStr.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
           // For HR/Manager with managed departments, show all managed dept names
@@ -36,6 +43,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
             name: nameStr,
             email: u.email || '',
             role: u.role || 'Employee',
+            position: u.position || '-',
             status: u.is_active === 1 ? 'Active' : 'Resigned',
             department: u.department || 'No Dept',
             departments: deptDisplay,
@@ -45,6 +53,13 @@ export default function SuperAdminDashboard({ onNavigate }) {
           }
         })
         setAllUsers(mappedUsers)
+        
+        if (posRes.data.positions) {
+          setAllPositions(posRes.data.positions.map(p => p.name).sort())
+        }
+        if (deptRes.data.departments) {
+          setAllDepartments(deptRes.data.departments.map(d => d.name).sort())
+        }
       } catch (err) {
         console.error('Failed to fetch users:', err)
       } finally {
@@ -76,13 +91,15 @@ export default function SuperAdminDashboard({ onNavigate }) {
 
     const matchesRole = filterRole === "all" || u.role === filterRole
     const matchesDept = filterDept === "all" || u.departments.includes(filterDept)
+    const matchesPos = filterPos === "all" || u.position === filterPos
     const matchesStatus = filterStatus === "all" || u.status === filterStatus
 
-    return matchesSearch && matchesRole && matchesDept && matchesStatus
+    return matchesSearch && matchesRole && matchesDept && matchesPos && matchesStatus
   })
 
-  // Get unique departments for filter dropdown (include all managed departments)
-  const departments = Array.from(new Set(allUsers.flatMap(u => u.departments))).filter(Boolean).sort()
+  // Get unique departments and positions for filter dropdown
+  const departments = allDepartments.length > 0 ? allDepartments : Array.from(new Set(allUsers.flatMap(u => u.departments))).filter(Boolean).sort()
+  const positionsList = allPositions.length > 0 ? allPositions : Array.from(new Set(allUsers.map(u => u.position))).filter(p => p && p !== '-').sort()
 
   // Pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
@@ -201,6 +218,20 @@ export default function SuperAdminDashboard({ onNavigate }) {
               </select>
             </div>
 
+            <div className="flex flex-col gap-1.5 min-w-[160px]">
+              <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider ml-1">Position</label>
+              <select
+                value={filterPos}
+                onChange={(e) => { setFilterPos(e.target.value); setCurrentPage(1); }}
+                className="bg-white border-none rounded-xl px-4 py-2.5 text-[13px] font-bold text-[#4c6367] shadow-sm focus:ring-2 focus:ring-[#3ea8e5]/20 outline-none cursor-pointer"
+              >
+                <option value="all">All Positions</option>
+                {positionsList.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex flex-col gap-1.5 min-w-[140px]">
               <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider ml-1">Status</label>
               <select
@@ -214,12 +245,13 @@ export default function SuperAdminDashboard({ onNavigate }) {
               </select>
             </div>
 
-            {(filterRole !== "all" || filterDept !== "all" || filterStatus !== "all" || searchTerm) && (
+            {(filterRole !== "all" || filterDept !== "all" || filterPos !== "all" || filterStatus !== "all" || searchTerm) && (
               <div className="flex flex-col gap-1.5 justify-end">
                 <button
                   onClick={() => {
                     setFilterRole("all");
                     setFilterDept("all");
+                    setFilterPos("all");
                     setFilterStatus("all");
                     setSearchTerm("");
                     setCurrentPage(1);
@@ -236,9 +268,10 @@ export default function SuperAdminDashboard({ onNavigate }) {
         {/* Registry Table */}
         <div className="bg-white rounded-[32px] shadow-sm overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr] gap-4 px-8 py-5 bg-[#f8fafb] border-b border-[#eef2f5]">
+          <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_1fr_0.8fr] gap-4 px-8 py-5 bg-[#f8fafb] border-b border-[#eef2f5]">
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase">User Profile</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Department</span>
+            <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Position</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Access Role</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Status</span>
             <span className="text-[11px] font-bold text-[#94a3b8] tracking-widest uppercase text-center">Management</span>
@@ -257,7 +290,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
               </div>
             ) : paginatedUsers.map((user, idx) => (
               <div key={user.id}>
-                <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr] gap-4 items-center px-8 py-5 hover:bg-[#f9fafb] transition-colors">
+                <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_1fr_0.8fr] gap-4 items-center px-8 py-5 hover:bg-[#f9fafb] transition-colors">
                   {/* User Profile */}
                   <div className="flex items-center gap-4">
                     {user.img ? (
@@ -279,7 +312,7 @@ export default function SuperAdminDashboard({ onNavigate }) {
                       {user.departments.map((dept, dIdx) => (
                         <span
                           key={dIdx}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap text-center"
                           style={{
                             backgroundColor: '#eef2f9',
                             color: '#4c6367'
@@ -289,6 +322,13 @@ export default function SuperAdminDashboard({ onNavigate }) {
                         </span>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Position */}
+                  <div className="flex justify-center">
+                    <span className="text-[13px] font-bold text-[#4c6367]">
+                      {user.position}
+                    </span>
                   </div>
 
                   {/* Role Badge */}
