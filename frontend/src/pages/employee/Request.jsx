@@ -125,19 +125,19 @@ export default function Request({ onNavigate }) {
     myRequests.forEach(r => {
       const status = r.status.toLowerCase()
       if (status !== 'approved' && status !== 'pending') return
-      
+
       const s = new Date(r.start_date)
       s.setHours(0, 0, 0, 0)
       const e = new Date(r.end_date)
       e.setHours(23, 59, 59, 999)
-      
+
       let cur = new Date(s)
       while (cur <= e) {
         const dow = cur.getDay()
         if (dow !== 0 && dow !== 6) {
           const dateStr = `${cur.getFullYear()}-${cur.getMonth()}-${cur.getDate()}`
-          map.set(dateStr, { 
-            type: r.leave_type_name, 
+          map.set(dateStr, {
+            type: r.leave_type_name,
             status: r.status,
             iconName: r.leave_type_icon,
             colorType: r.leave_type_color
@@ -208,17 +208,16 @@ export default function Request({ onNavigate }) {
 
     // Check if exceeding quota
     const balanceObj = leaveBalances.find(b => b.leave_type_id === leaveType);
-    if (balanceObj) {
-      const requestedDays = duration.totalHours / 8;
-      const parsedRemaining = Number(balanceObj.remaining_days);
-      if (parsedRemaining < requestedDays) {
-        setExceedDetails({
-          requested: requestedDays,
-          remaining: parsedRemaining
-        });
-        setShowExceedModal(true);
-        return;
-      }
+    const requestedDays = duration.totalHours / 8;
+    const parsedRemaining = balanceObj ? Number(balanceObj.remaining_days) : 0;
+
+    if (parsedRemaining < requestedDays) {
+      setExceedDetails({
+        requested: requestedDays,
+        remaining: parsedRemaining
+      });
+      setShowExceedModal(true);
+      return;
     }
 
     doSubmit();
@@ -373,12 +372,12 @@ export default function Request({ onNavigate }) {
               <AlertTriangle size={32} color="#e11d48" strokeWidth={2.5} />
             </div>
             <h2 className="font-fredoka font-bold text-[22px] text-[#2d3e50] mb-2">Exceeds Quota Warning</h2>
-            <p className="text-[14px] text-[#64748b] font-medium mb-6">
+            <p className="text-[14px] text-[#64748b] font-medium mb-10">
               You are requesting <span className="font-bold text-[#e11d48]">{exceedDetails.requested} days</span>, but you only have <span className="font-bold text-[#3f4a51]">{exceedDetails.remaining} days</span> remaining.
               <br /><br />
               If you proceed, this request will be flagged as "Exceeds Quota" for your manager's special review.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-8">
               <button
                 onClick={() => setShowExceedModal(false)}
                 className="flex-1 py-3.5 rounded-2xl border-2 border-[#e2e8f0] text-[#64748b] font-bold text-[14px] hover:bg-[#f8fafc] hover:border-[#cbd5e1] transition-colors cursor-pointer"
@@ -388,7 +387,7 @@ export default function Request({ onNavigate }) {
               <button
                 onClick={doSubmit}
                 disabled={isSubmitting}
-                className="!flex-1 !py-3.5 rounded-2xl !bg-[#e11d48] text-white font-bold text-[14px] hover:bg-[#be123c] transition-colors shadow-lg shadow-[#e11d48]/20 cursor-pointer disabled:opacity-50"
+                className="!flex-1 !py-3 rounded-2xl !bg-[#e11d48] text-white font-bold text-[14px] hover:bg-[#be123c] transition-colors shadow-lg shadow-[#e11d48]/20 cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? "Submitting..." : "Yes, Proceed"}
               </button>
@@ -554,7 +553,7 @@ export default function Request({ onNavigate }) {
                                 </span>
                               </div>
                             </div>
-                            <div 
+                            <div
                               className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0"
                               style={{ backgroundColor: stColor.bg, color: stColor.text }}
                             >
@@ -758,7 +757,9 @@ export default function Request({ onNavigate }) {
           <div className="flex flex-col items-end gap-3 flex-1">
             {leaveType && startDate && endDate && duration.totalHours > 0 && (() => {
               const balanceObj = leaveBalances.find(b => b.leave_type_id === leaveType);
-              if (balanceObj && Number(balanceObj.remaining_days) < (duration.totalHours / 8)) {
+              const requestedDays = duration.totalHours / 8;
+              const parsedRemaining = balanceObj ? Number(balanceObj.remaining_days) : 0;
+              if (parsedRemaining < requestedDays) {
                 return (
                   <div className="flex items-center gap-2 bg-[#fff1f2] border border-[#fecaca] px-4 py-2 rounded-xl text-[#e11d48] text-[12px] font-bold">
                     <Umbrella size={14} className="shrink-0" />
