@@ -251,7 +251,7 @@ export default function AddUser({ onNavigate }) {
                   onChange={(e) => setForm(p => ({ ...p, role: e.target.value }))}
                   className="bg-[#f4f7f9] rounded-full py-3 px-5 text-[14px] font-bold text-[#323940] outline-none appearance-none cursor-pointer w-full focus:ring-2 focus:ring-[#567278]/20"
                 >
-                  {roles.map(r => (
+                  {roles.filter(r => r.name !== 'Super Admin').map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>

@@ -724,7 +724,6 @@ export default function EmployeeProfile({ onNavigate }) {
                   <option>Employee</option>
                   <option>Manager</option>
                   <option>HR</option>
-                  <option>Super Admin</option>
                 </select>
               </div>
 
