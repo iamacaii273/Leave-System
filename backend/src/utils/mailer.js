@@ -48,6 +48,35 @@ async function initTransporter() {
  */
 async function sendEmail(to, subject, text, html) {
   try {
+    // If RESEND_API_KEY is provided, use Resend API (HTTPS port 443) to bypass Railway SMTP block
+    if (process.env.RESEND_API_KEY) {
+      console.log("Using Resend API to send email...");
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+          to: to,
+          subject: subject,
+          html: html,
+          text: text
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`Resend API Error: ${data.message || JSON.stringify(data)}`);
+      }
+      
+      console.log("Message sent via Resend: %s", data.id);
+      return data;
+    }
+
+    // Fallback to Nodemailer (SMTP / Ethereal)
     const mailer = await initTransporter();
     
     // send mail with defined transport object
@@ -59,7 +88,7 @@ async function sendEmail(to, subject, text, html) {
       html,
     });
 
-    console.log("Message sent: %s", info.messageId);
+    console.log("Message sent via SMTP: %s", info.messageId);
     
     // If using Ethereal, generate a preview URL to click and read the email!
     if (!process.env.SMTP_HOST) {
