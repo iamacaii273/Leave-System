@@ -1,6 +1,3 @@
-[phases.setup]
-nixPkgs = ["nodejs_20"]
-
 [phases.install]
 cmds = ["npm ci"]
 
@@ -8,4 +5,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npx vite preview --host --port ${PORT:-3000}"
+cmd = "npx serve -s dist -l ${PORT:-3000}"
